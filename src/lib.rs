@@ -1,3 +1,25 @@
+// -*- coding: utf-8; mode: rust; -*-
+//
+// To the extent possible under law, the authors have waived all
+// copyright and related or neighboring rights to zkp,
+// using the Creative Commons "CC0" public domain dedication.  See
+// <http://creativecommons.org/publicdomain/zero/.0/> for full
+// details.
+//
+// Authors:
+// - Henry de Valence <hdevalence@hdevalence.ca>
+
+//! This crate has an experimental zero-knowledge proof compiler
+//! implemented using Rust macros.
+//!
+//! It provides a DSL resembing Camenisch-Stadler notation for proving
+//! statements about discrete logarithms in the Decaf group on
+//! Curve25519, as implemented in
+//! [`curve25519-dalek`](https://github.com/isislovecruft/curve25519-dalek).
+//! Note that both the Decaf implementation in `curve25519-dalek`, *as
+//! well as this library*, are currently **UNFINISHED, UNREVIEWED, AND
+//! EXPERIMENTAL**.  (I haven't actually checked carefully that the
+//! proofs are sound, for instance...)
 #![allow(non_snake_case)]
 #![feature(test)]
 
