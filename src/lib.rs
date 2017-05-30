@@ -3,7 +3,7 @@
 // To the extent possible under law, the authors have waived all
 // copyright and related or neighboring rights to zkp,
 // using the Creative Commons "CC0" public domain dedication.  See
-// <http://creativecommons.org/publicdomain/zero/.0/> for full
+// <http://creativecommons.org/publicdomain/zero/1.0/> for full
 // details.
 //
 // Authors:
