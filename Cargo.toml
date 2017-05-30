@@ -2,6 +2,15 @@
 name = "zkp"
 version = "0.1.0"
 authors = ["Henry de Valence <hdevalence@hdevalence.ca>"]
+license = "CC0-1.0"
+repository = "https://github.com/hdevalence/zkp"
+documentation = "https://docs.rs/zkp"
+categories = ["cryptography"]
+keywords = ["cryptography", "curve25519", "zero-knowledge", "NIZK", "compiler"]
+description = "This crate has an experimental zero-knowledge proof compiler implemented using Rust macros"
+exclude = [
+    ".gitignore"
+]
 
 [dependencies]
 sha2 = "^0.4"
