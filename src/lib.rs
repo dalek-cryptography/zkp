@@ -83,6 +83,78 @@ macro_rules! __compute_commitments_consttime {
     }
 }
 
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __compute_formula_scalarlist_vartime {
+    // Unbracket a statement
+    (($publics:ident, $scalars:ident) ($($x:tt)*)) => {
+        __compute_formula_scalarlist_vartime!(($publics,$scalars) $($x)*)
+    };
+    // Single-op formula
+    (($publics:ident, $scalars:ident) $point2:ident * $scalar2:ident) => {
+        &[ $scalars.$scalar2 ]
+    };
+    // Inner part of the formula: give a list of &Scalars
+    // Unwrap so we can use + as a seperator (not allowed to do $(x)+* )
+    (($publics:ident, $scalars:ident)
+     $( $point:ident * $scalar:ident +)+ $point2:ident * $scalar2:ident) => {
+        &[ $( $scalars.$scalar ,)*, $scalars.$scalar2 ]
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __compute_formula_pointlist_vartime {
+    // Unbracket a statement
+    (($publics:ident, $scalars:ident) ($($x:tt)*)) => {
+        __compute_formula_pointlist_vartime!(($publics,$scalars) $($x)*)
+    };
+    // Single-op formula
+    (($publics:ident, $scalars:ident) $point2:ident * $scalar2:ident) => {
+        &[ *($publics.$point2) ]
+    };
+    // Inner part of the formula: give a list of &Scalars
+    // Unwrap so we can use + as a seperator (not allowed to do $(x)+* )
+    (($publics:ident, $scalars:ident)
+     $( $point:ident * $scalar:ident +)* $point2:ident * $scalar2:ident) => {
+        &[ $( *($publics.$point) ,)*, *($publics.$point2) ]
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __compute_commitments_vartime {
+    (($publics:ident, $scalars:ident) $($lhs:ident = $statement:tt),+) => {
+        Commitments {
+            $( $lhs :
+               vartime::k_fold_scalar_mult(
+                   __compute_formula_scalarlist_vartime!(($publics, $scalars) $statement),
+                   __compute_formula_pointlist_vartime!(($publics, $scalars) $statement),
+               )
+            ),+
+        }
+    }
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __recompute_commitments_vartime {
+    (($publics:ident, $scalars:ident, $minus_c:ident) $($lhs:ident = $statement:tt),+) => {
+        Commitments {
+            $( $lhs :
+               vartime::k_fold_scalar_mult(
+                   __compute_formula_scalarlist_vartime!(($publics, $scalars) $statement)
+                       .into_iter()
+                       .chain(Some($minus_c).iter()),
+                   __compute_formula_pointlist_vartime!(($publics, $scalars) $statement)
+                       .into_iter()
+                       .chain(Some(*$publics.$lhs).iter())
+               )
+            ),+
+        }
+    }
+}
+
 /// Creates a module with code required to produce a non-interactive
 /// zero-knowledge proof statement, to serialize it to wire format, to
 /// parse from wire format, and to verify the proof statement.
@@ -223,6 +295,7 @@ macro_rules! create_nipk {
         mod $proof_module_name {
             use $crate::curve25519_dalek::scalar::Scalar;
             use $crate::curve25519_dalek::decaf::DecafPoint;
+            use $crate::curve25519_dalek::decaf::vartime;
             use $crate::sha2::{Digest, Sha512};
             use $crate::rand::Rng;
 
@@ -258,11 +331,32 @@ macro_rules! create_nipk {
             }
 
             impl Proof {
+                /// Create a `Proof`, in constant time, from the given
+                /// `Publics` and `Secrets`.
                 #[allow(dead_code)]
                 pub fn create<R: Rng>(
                     csprng: &mut R,
                     publics: Publics,
                     secrets: Secrets,
+                ) -> Proof {
+                    Proof::create_inner(csprng, publics, secrets, false)
+                }
+                /// Create a `Proof`, in variable time, from the given
+                /// `Publics` and `Secrets`.
+                #[allow(dead_code)]
+                pub fn create_vartime<R: Rng>(
+                    csprng: &mut R,
+                    publics: Publics,
+                    secrets: Secrets,
+                ) -> Proof {
+                    Proof::create_inner(csprng, publics, secrets, true)
+                }
+                #[allow(dead_code)]
+                fn create_inner<R: Rng>(
+                    csprng: &mut R,
+                    publics: Publics,
+                    secrets: Secrets,
+                    vartime: bool,
                 ) -> Proof {
                     let rand = Randomnesses{
                         $(
@@ -272,9 +366,16 @@ macro_rules! create_nipk {
                     // $statement_rhs = `X * x + Y * y + Z * z`
                     // should become
                     // `publics.X * rand.x + publics.Y * rand.y + publics.Z * rand.z`
-                    let commitments = __compute_commitments_consttime!(
-                        (publics, rand) $($lhs = $statement),*
-                    );
+                    let commitments: Commitments;
+                    if vartime {
+                        commitments = __compute_commitments_vartime!(
+                            (publics, rand) $($lhs = $statement),*
+                        );
+                    } else {
+                        commitments = __compute_commitments_consttime!(
+                            (publics, rand) $($lhs = $statement),*
+                        );
+                    }
 
                     let mut hash = Sha512::default();
 
@@ -300,18 +401,17 @@ macro_rules! create_nipk {
                     Proof{ challenge: challenge, responses: responses }
                 }
 
+                /// Verify the `Proof` using the public parameters `Publics`.
                 #[allow(dead_code)]
                 pub fn verify(&self, publics: Publics) -> Result<(),()> {
                     // `A = X * x + Y * y`
                     // should become
                     // `publics.X * responses.x + publics.Y * responses.y - publics.A * self.challenge`
                     let responses = &self.responses;
-                    let mut commitments = __compute_commitments_consttime!(
-                        (publics, responses) $($lhs = $statement),*
+                    let minus_c = -&self.challenge;
+                    let commitments = __recompute_commitments_vartime!(
+                        (publics, responses, minus_c) $($lhs = $statement),*
                     );
-                    $(
-                        commitments.$lhs -= &(publics.$lhs * &self.challenge);
-                    )*
                     
                     let mut hash = Sha512::default();
                     // Add each public point into the hash
