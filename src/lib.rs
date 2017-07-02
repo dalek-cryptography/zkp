@@ -426,6 +426,101 @@ macro_rules! create_nipk {
                     if challenge == self.challenge { Ok(()) } else { Err(()) }
                 }
             }
+
+            #[cfg(test)]
+            mod bench {
+                extern crate test;
+                extern crate serde_cbor;
+
+                use $crate::rand::OsRng;
+
+                use super::*;
+
+                use self::test::Bencher;
+
+                #[bench]
+                #[allow(dead_code)]
+                fn create(b: &mut Bencher) {
+                    let mut csprng = OsRng::new().unwrap();
+
+                    // Need somewhere to actually put the public points
+                    struct DummyPublics { $( pub $public : DecafPoint, )+ }
+                    let dummy_publics = DummyPublics {
+                        $( $public : DecafPoint::random(&mut csprng) , )+
+                    };
+
+                    let publics = Publics {
+                        $( $public : &dummy_publics.$public , )+
+                    };
+                    
+                    struct DummySecrets { $( pub $secret : Scalar, )+ }
+                    let dummy_secrets = DummySecrets {
+                        $( $secret : Scalar::random(&mut csprng) , )+
+                    };
+
+                    let secrets = Secrets {
+                        $( $secret : &dummy_secrets.$secret , )+
+                    };
+
+                    b.iter(|| Proof::create(&mut csprng, publics, secrets));
+                }
+
+                #[bench]
+                #[allow(dead_code)]
+                fn create_vartime(b: &mut Bencher) {
+                    let mut csprng = OsRng::new().unwrap();
+
+                    // Need somewhere to actually put the public points
+                    struct DummyPublics { $( pub $public : DecafPoint, )+ }
+                    let dummy_publics = DummyPublics {
+                        $( $public : DecafPoint::random(&mut csprng) , )+
+                    };
+
+                    let publics = Publics {
+                        $( $public : &dummy_publics.$public , )+
+                    };
+                    
+                    struct DummySecrets { $( pub $secret : Scalar, )+ }
+                    let dummy_secrets = DummySecrets {
+                        $( $secret : Scalar::random(&mut csprng) , )+
+                    };
+
+                    let secrets = Secrets {
+                        $( $secret : &dummy_secrets.$secret , )+
+                    };
+
+                    b.iter(|| Proof::create_vartime(&mut csprng, publics, secrets));
+                }
+
+                #[bench]
+                #[allow(dead_code)]
+                fn verify(b: &mut Bencher) {
+                    let mut csprng = OsRng::new().unwrap();
+
+                    // Need somewhere to actually put the public points
+                    struct DummyPublics { $( pub $public : DecafPoint, )+ }
+                    let dummy_publics = DummyPublics {
+                        $( $public : DecafPoint::random(&mut csprng) , )+
+                    };
+
+                    let publics = Publics {
+                        $( $public : &dummy_publics.$public , )+
+                    };
+                    
+                    struct DummySecrets { $( pub $secret : Scalar, )+ }
+                    let dummy_secrets = DummySecrets {
+                        $( $secret : Scalar::random(&mut csprng) , )+
+                    };
+
+                    let secrets = Secrets {
+                        $( $secret : &dummy_secrets.$secret , )+
+                    };
+
+                    let p = Proof::create_vartime(&mut csprng, publics, secrets);
+
+                    b.iter(|| p.verify(publics));
+                }
+            }
         }
     }
 }
