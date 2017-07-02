@@ -88,17 +88,14 @@ macro_rules! __compute_commitments_consttime {
 macro_rules! __compute_formula_scalarlist_vartime {
     // Unbracket a statement
     (($publics:ident, $scalars:ident) ($($x:tt)*)) => {
-        __compute_formula_scalarlist_vartime!(($publics,$scalars) $($x)*)
-    };
-    // Single-op formula
-    (($publics:ident, $scalars:ident) $point2:ident * $scalar2:ident) => {
-        &[ $scalars.$scalar2 ]
+        // Add a trailing +
+        __compute_formula_scalarlist_vartime!(($publics,$scalars) $($x)* +)
     };
     // Inner part of the formula: give a list of &Scalars
-    // Unwrap so we can use + as a seperator (not allowed to do $(x)+* )
+    // Since there's a trailing +, we can just generate the list as normal...
     (($publics:ident, $scalars:ident)
-     $( $point:ident * $scalar:ident +)+ $point2:ident * $scalar2:ident) => {
-        &[ $( $scalars.$scalar ,)*, $scalars.$scalar2 ]
+     $( $point:ident * $scalar:ident +)+ ) => {
+        &[ $( $scalars.$scalar ,)* ]
     };
 }
 
@@ -107,17 +104,14 @@ macro_rules! __compute_formula_scalarlist_vartime {
 macro_rules! __compute_formula_pointlist_vartime {
     // Unbracket a statement
     (($publics:ident, $scalars:ident) ($($x:tt)*)) => {
-        __compute_formula_pointlist_vartime!(($publics,$scalars) $($x)*)
-    };
-    // Single-op formula
-    (($publics:ident, $scalars:ident) $point2:ident * $scalar2:ident) => {
-        &[ *($publics.$point2) ]
+        // Add a trailing +
+        __compute_formula_pointlist_vartime!(($publics,$scalars) $($x)* +)
     };
     // Inner part of the formula: give a list of &Scalars
-    // Unwrap so we can use + as a seperator (not allowed to do $(x)+* )
+    // Since there's a trailing +, we can just generate the list as normal...
     (($publics:ident, $scalars:ident)
-     $( $point:ident * $scalar:ident +)* $point2:ident * $scalar2:ident) => {
-        &[ $( *($publics.$point) ,)*, *($publics.$point2) ]
+     $( $point:ident * $scalar:ident +)* ) => {
+        &[ $( *($publics.$point) ,)* ]
     };
 }
 
@@ -145,10 +139,11 @@ macro_rules! __recompute_commitments_vartime {
                vartime::k_fold_scalar_mult(
                    __compute_formula_scalarlist_vartime!(($publics, $scalars) $statement)
                        .into_iter()
-                       .chain(Some($minus_c).iter()),
+                       .chain(iter::once(&($minus_c)))
+                   ,
                    __compute_formula_pointlist_vartime!(($publics, $scalars) $statement)
                        .into_iter()
-                       .chain(Some(*$publics.$lhs).iter())
+                       .chain(iter::once($publics.$lhs))
                )
             ),+
         }
@@ -298,6 +293,8 @@ macro_rules! create_nipk {
             use $crate::curve25519_dalek::decaf::vartime;
             use $crate::sha2::{Digest, Sha512};
             use $crate::rand::Rng;
+
+            use std::iter;
 
             #[derive(Copy, Clone)]
             pub struct Secrets<'a> {
