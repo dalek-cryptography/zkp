@@ -221,7 +221,11 @@ macro_rules! __recompute_commitments_vartime {
 ///
 /// The `Publics` and `Secrets` structs are used to fake named
 /// arguments in the input to `create` and `verify`.  Proof creation
-/// is done in constant time.
+/// is done in constant time.  Proof verification uses variable-time
+/// code.
+///
+/// (A `create_vartime` function is also provided; it is not
+/// recommended unless side-channel security is not a concern.)
 ///
 /// As an example, we can create and verify a DLEQ proof as follows:
 ///
