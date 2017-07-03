@@ -25,8 +25,6 @@ Extensive documentation is available [here](https://docs.rs/zkp).
 
 # Pre-Release TODOs
 
-* add vartime code for proof verification
-* add optional vartime code for proof creation
 * don't use any yolocrypto features (i.e. stabilise decaf in curve25519-dalek)
 * make sure proofs are sound
 * make a CONTRIBUTING.md
