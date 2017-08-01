@@ -35,61 +35,13 @@ pub extern crate rand;
 #[doc(hidden)]
 pub extern crate sha2;
 
-/// compute_formula_consttime!((publics, scalars) (A*a + B*b + ...))
-/// returns
-/// The input to this macro is of the form
-///
-///   (publics, scalars) (A*a + B*b + ...)
-///
-/// where `publics` is the name of a struct with members `A, B, ...`
-/// of type `&DecafPoint`, and `scalars` is the name of a struct with
-/// members `a, b, ...` of type `Scalar`.
-///
-/// It expands to an expression of the form
-///
-///   &(publics.A * &scalars.a) + &( &(publics.B * &scalars.b) + &(...))
-///
-/// All these operations are constant-time.
 #[doc(hidden)]
 #[macro_export]
-macro_rules! __compute_formula_consttime {
-    // Unbracket a statement
-    (($publics:ident, $scalars:ident) ($($x:tt)*)) => {
-        __compute_formula_consttime!(($publics,$scalars) $($x)*)
-    };
-    // Multi-part statement
-    (($publics:ident, $scalars:ident)
-     $point:ident * $scalar:ident + $($x:tt)*) => {
-        &($publics.$point * &$scalars.$scalar) +
-        &( __compute_formula_consttime!(($publics,$scalars) $($x)*) )
-    };
-    // Single-part statement / end of statement
-    (($publics:ident, $scalars:ident)
-     $point:ident * $scalar:ident ) => {
-        $publics.$point * &$scalars.$scalar
-    };
-}
-
-/// Expands to a constructor for a `Commitments` struct, which
-/// computes (in constant time) commitments based on the input
-/// statements.
-#[doc(hidden)]
-#[macro_export]
-macro_rules! __compute_commitments_consttime {
-    (($publics:ident, $scalars:ident) $($lhs:ident = $statement:tt),+) => {
-        Commitments {
-            $( $lhs : __compute_formula_consttime!(($publics, $scalars) $statement) ),+
-        }
-    }
-}
-
-#[doc(hidden)]
-#[macro_export]
-macro_rules! __compute_formula_scalarlist_vartime {
+macro_rules! __compute_formula_scalarlist {
     // Unbracket a statement
     (($publics:ident, $scalars:ident) ($($x:tt)*)) => {
         // Add a trailing +
-        __compute_formula_scalarlist_vartime!(($publics,$scalars) $($x)* +)
+        __compute_formula_scalarlist!(($publics,$scalars) $($x)* +)
     };
     // Inner part of the formula: give a list of &Scalars
     // Since there's a trailing +, we can just generate the list as normal...
@@ -101,11 +53,11 @@ macro_rules! __compute_formula_scalarlist_vartime {
 
 #[doc(hidden)]
 #[macro_export]
-macro_rules! __compute_formula_pointlist_vartime {
+macro_rules! __compute_formula_pointlist {
     // Unbracket a statement
     (($publics:ident, $scalars:ident) ($($x:tt)*)) => {
         // Add a trailing +
-        __compute_formula_pointlist_vartime!(($publics,$scalars) $($x)* +)
+        __compute_formula_pointlist!(($publics,$scalars) $($x)* +)
     };
     // Inner part of the formula: give a list of &Scalars
     // Since there's a trailing +, we can just generate the list as normal...
@@ -117,13 +69,13 @@ macro_rules! __compute_formula_pointlist_vartime {
 
 #[doc(hidden)]
 #[macro_export]
-macro_rules! __compute_commitments_vartime {
+macro_rules! __compute_commitments_consttime {
     (($publics:ident, $scalars:ident) $($lhs:ident = $statement:tt),+) => {
         Commitments {
             $( $lhs :
-               vartime::k_fold_scalar_mult(
-                   __compute_formula_scalarlist_vartime!(($publics, $scalars) $statement),
-                   __compute_formula_pointlist_vartime!(($publics, $scalars) $statement),
+               multiscalar_mult(
+                   __compute_formula_scalarlist!(($publics, $scalars) $statement),
+                   __compute_formula_pointlist!(($publics, $scalars) $statement),
                )
             ),+
         }
@@ -136,12 +88,12 @@ macro_rules! __recompute_commitments_vartime {
     (($publics:ident, $scalars:ident, $minus_c:ident) $($lhs:ident = $statement:tt),+) => {
         Commitments {
             $( $lhs :
-               vartime::k_fold_scalar_mult(
-                   __compute_formula_scalarlist_vartime!(($publics, $scalars) $statement)
+               vartime::multiscalar_mult(
+                   __compute_formula_scalarlist!(($publics, $scalars) $statement)
                        .into_iter()
                        .chain(iter::once(&($minus_c)))
                    ,
-                   __compute_formula_pointlist_vartime!(($publics, $scalars) $statement)
+                   __compute_formula_pointlist!(($publics, $scalars) $statement)
                        .into_iter()
                        .chain(iter::once($publics.$lhs))
                )
@@ -224,9 +176,6 @@ macro_rules! __recompute_commitments_vartime {
 /// is done in constant time.  Proof verification uses variable-time
 /// code.
 ///
-/// (A `create_vartime` function is also provided; it is not
-/// recommended unless side-channel security is not a concern.)
-///
 /// As an example, we can create and verify a DLEQ proof as follows:
 ///
 /// ```
@@ -294,6 +243,7 @@ macro_rules! create_nipk {
         mod $proof_module_name {
             use $crate::curve25519_dalek::scalar::Scalar;
             use $crate::curve25519_dalek::decaf::DecafPoint;
+            use $crate::curve25519_dalek::decaf::multiscalar_mult;
             use $crate::curve25519_dalek::decaf::vartime;
             use $crate::sha2::{Digest, Sha512};
             use $crate::rand::Rng;
@@ -340,25 +290,6 @@ macro_rules! create_nipk {
                     publics: Publics,
                     secrets: Secrets,
                 ) -> Proof {
-                    Proof::create_inner(csprng, publics, secrets, false)
-                }
-                /// Create a `Proof`, in variable time, from the given
-                /// `Publics` and `Secrets`.
-                #[allow(dead_code)]
-                pub fn create_vartime<R: Rng>(
-                    csprng: &mut R,
-                    publics: Publics,
-                    secrets: Secrets,
-                ) -> Proof {
-                    Proof::create_inner(csprng, publics, secrets, true)
-                }
-                #[allow(dead_code)]
-                fn create_inner<R: Rng>(
-                    csprng: &mut R,
-                    publics: Publics,
-                    secrets: Secrets,
-                    vartime: bool,
-                ) -> Proof {
                     let rand = Randomnesses{
                         $(
                             $secret : Scalar::random(csprng),
@@ -368,15 +299,9 @@ macro_rules! create_nipk {
                     // should become
                     // `publics.X * rand.x + publics.Y * rand.y + publics.Z * rand.z`
                     let commitments: Commitments;
-                    if vartime {
-                        commitments = __compute_commitments_vartime!(
-                            (publics, rand) $($lhs = $statement),*
-                        );
-                    } else {
-                        commitments = __compute_commitments_consttime!(
-                            (publics, rand) $($lhs = $statement),*
-                        );
-                    }
+                    commitments = __compute_commitments_consttime!(
+                        (publics, rand) $($lhs = $statement),*
+                    );
 
                     let mut hash = Sha512::default();
 
@@ -471,33 +396,6 @@ macro_rules! create_nipk {
 
                 #[bench]
                 #[allow(dead_code)]
-                fn create_vartime(b: &mut Bencher) {
-                    let mut csprng = OsRng::new().unwrap();
-
-                    // Need somewhere to actually put the public points
-                    struct DummyPublics { $( pub $public : DecafPoint, )+ }
-                    let dummy_publics = DummyPublics {
-                        $( $public : DecafPoint::random(&mut csprng) , )+
-                    };
-
-                    let publics = Publics {
-                        $( $public : &dummy_publics.$public , )+
-                    };
-                    
-                    struct DummySecrets { $( pub $secret : Scalar, )+ }
-                    let dummy_secrets = DummySecrets {
-                        $( $secret : Scalar::random(&mut csprng) , )+
-                    };
-
-                    let secrets = Secrets {
-                        $( $secret : &dummy_secrets.$secret , )+
-                    };
-
-                    b.iter(|| Proof::create_vartime(&mut csprng, publics, secrets));
-                }
-
-                #[bench]
-                #[allow(dead_code)]
                 fn verify(b: &mut Bencher) {
                     let mut csprng = OsRng::new().unwrap();
 
@@ -520,7 +418,7 @@ macro_rules! create_nipk {
                         $( $secret : &dummy_secrets.$secret , )+
                     };
 
-                    let p = Proof::create_vartime(&mut csprng, publics, secrets);
+                    let p = Proof::create(&mut csprng, publics, secrets);
 
                     b.iter(|| p.verify(publics));
                 }

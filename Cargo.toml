@@ -1,6 +1,6 @@
 [package]
 name = "zkp"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Henry de Valence <hdevalence@hdevalence.ca>"]
 license = "CC0-1.0"
 repository = "https://github.com/hdevalence/zkp"
@@ -13,7 +13,7 @@ exclude = [
 ]
 
 [dependencies]
-sha2 = "^0.4"
+sha2 = "^0.6"
 rand = "^0.3"
 serde = "1.0"
 serde_derive = "1.0"
@@ -23,5 +23,5 @@ serde_cbor = "0.6"
 
 [dependencies.curve25519-dalek]
 features = ["yolocrypto", "serde", "nightly"]
-version = "^0.9"
+version = "^0.10"
 
