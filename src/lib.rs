@@ -196,7 +196,7 @@ macro_rules! __recompute_commitments_vartime {
 /// extern crate sha2;
 /// use sha2::Sha256;
 ///
-/// extern crate serde_cbor;
+/// extern crate bincode;
 ///
 /// # fn main() {
 /// let mut csprng = OsRng::new().unwrap();
@@ -214,14 +214,14 @@ macro_rules! __recompute_commitments_vartime {
 ///
 /// let proof = dleq::Proof::create(&mut csprng, publics, secrets);
 ///
-/// // Serialize to packed CBOR byte representation
-/// let proof_bytes = serde_cbor::ser::to_vec_packed(&proof).unwrap();
+/// // Serialize to bincode representation
+/// let proof_bytes = bincode::serialize(&proof, bincode::Infinite).unwrap();
 ///
 /// // Send bytes over the wire here ...
 ///
 /// // Parse bytes back to in-memory representation
 /// let parsed_proof: dleq::Proof
-///     = serde_cbor::from_slice(&proof_bytes).unwrap();
+///     = bincode::deserialize(&proof_bytes).unwrap();
 ///
 /// // Check the proof.
 /// assert!(parsed_proof.verify(publics).is_ok());
@@ -359,7 +359,6 @@ macro_rules! create_nipk {
             #[cfg(test)]
             mod bench {
                 extern crate test;
-                extern crate serde_cbor;
 
                 use $crate::rand::OsRng;
 
@@ -429,7 +428,7 @@ macro_rules! create_nipk {
 
 #[cfg(test)]
 mod tests {
-    extern crate serde_cbor;
+    extern crate bincode;
     extern crate test;
 
     use rand::OsRng;
@@ -493,11 +492,11 @@ mod tests {
         let secrets = dleq::Secrets{x: &x};
 
         let proof = dleq::Proof::create(&mut csprng, publics, secrets);
-        // serialize to packed CBOR byte representation
-        let proof_bytes = serde_cbor::ser::to_vec_packed(&proof).unwrap();
+        // serialize to bincode representation
+        let proof_bytes = bincode::serialize(&proof, bincode::Infinite).unwrap();
         // parse bytes back to memory
         let parsed_proof: dleq::Proof
-            = serde_cbor::from_slice(&proof_bytes).unwrap();
+            = bincode::deserialize(&proof_bytes).unwrap();
 
         assert!(parsed_proof.verify(publics).is_ok());
     }
