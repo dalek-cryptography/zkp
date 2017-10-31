@@ -13,10 +13,10 @@
 //! implemented using Rust macros.
 //!
 //! It provides a DSL resembing Camenisch-Stadler notation for proving
-//! statements about discrete logarithms in the Decaf group on
+//! statements about discrete logarithms in the Ristretto group on
 //! Curve25519, as implemented in
 //! [`curve25519-dalek`](https://github.com/isislovecruft/curve25519-dalek).
-//! Note that both the Decaf implementation in `curve25519-dalek`, *as
+//! Note that both the Ristretto implementation in `curve25519-dalek`, *as
 //! well as this library*, are currently **UNFINISHED, UNREVIEWED, AND
 //! EXPERIMENTAL**.  (I haven't actually checked carefully that the
 //! proofs are sound, for instance...)
@@ -116,7 +116,7 @@ macro_rules! __recompute_commitments_vartime {
 ///
 /// This creates a module `dleq` with code for proving knowledge of a
 /// secret `x: Scalar` such that `A = G*x`, `B = H*x` for public
-/// parameters `A, B, G, H: DecafPoint`.  In general the syntax is
+/// parameters `A, B, G, H: RistrettoPoint`.  In general the syntax is
 ///
 /// ```rust,ignore
 /// create_nipk!{
@@ -141,7 +141,7 @@ macro_rules! __recompute_commitments_vartime {
 /// form
 ///
 /// ```rust,ignore
-/// pub struct Publics<'a> { pub A: &'a DecafPoint, ... }
+/// pub struct Publics<'a> { pub A: &'a RistrettoPoint, ... }
 /// ```
 ///
 /// A `Secrets` struct corresponding to the secret parameters, of the
@@ -187,7 +187,7 @@ macro_rules! __recompute_commitments_vartime {
 ///
 /// extern crate curve25519_dalek;
 /// use curve25519_dalek::constants as dalek_constants;
-/// use curve25519_dalek::decaf::DecafPoint;
+/// use curve25519_dalek::ristretto::RistrettoPoint;
 /// use curve25519_dalek::scalar::Scalar;
 ///
 /// extern crate rand;
@@ -200,8 +200,8 @@ macro_rules! __recompute_commitments_vartime {
 ///
 /// # fn main() {
 /// let mut csprng = OsRng::new().unwrap();
-/// let G = &dalek_constants::DECAF_ED25519_BASEPOINT;
-/// let H = DecafPoint::hash_from_bytes::<Sha256>(G.compress().as_bytes());
+/// let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
+/// let H = RistrettoPoint::hash_from_bytes::<Sha256>(G.compress().as_bytes());
 ///
 /// create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
 ///
@@ -242,9 +242,9 @@ macro_rules! create_nipk {
     ) => {
         mod $proof_module_name {
             use $crate::curve25519_dalek::scalar::Scalar;
-            use $crate::curve25519_dalek::decaf::DecafPoint;
-            use $crate::curve25519_dalek::decaf::multiscalar_mult;
-            use $crate::curve25519_dalek::decaf::vartime;
+            use $crate::curve25519_dalek::ristretto::RistrettoPoint;
+            use $crate::curve25519_dalek::ristretto::multiscalar_mult;
+            use $crate::curve25519_dalek::ristretto::vartime;
             use $crate::sha2::{Digest, Sha512};
             use $crate::rand::Rng;
 
@@ -262,7 +262,7 @@ macro_rules! create_nipk {
             pub struct Publics<'a> {
                 // Create a parameter for each public value
                 $(
-                    pub $public : &'a DecafPoint,
+                    pub $public : &'a RistrettoPoint,
                 )+
             }
 
@@ -270,7 +270,7 @@ macro_rules! create_nipk {
             // so do responses.x instead of responses_x
             // rand.x instead of rand_x, etc.
 
-            struct Commitments {$($lhs: DecafPoint,)+ }
+            struct Commitments {$($lhs: RistrettoPoint,)+ }
             struct Randomnesses {$($secret : Scalar,)+}
             #[derive(Serialize, Deserialize)]
             struct Responses {$($secret : Scalar,)+}
@@ -373,9 +373,9 @@ macro_rules! create_nipk {
                     let mut csprng = OsRng::new().unwrap();
 
                     // Need somewhere to actually put the public points
-                    struct DummyPublics { $( pub $public : DecafPoint, )+ }
+                    struct DummyPublics { $( pub $public : RistrettoPoint, )+ }
                     let dummy_publics = DummyPublics {
-                        $( $public : DecafPoint::random(&mut csprng) , )+
+                        $( $public : RistrettoPoint::random(&mut csprng) , )+
                     };
 
                     let publics = Publics {
@@ -400,9 +400,9 @@ macro_rules! create_nipk {
                     let mut csprng = OsRng::new().unwrap();
 
                     // Need somewhere to actually put the public points
-                    struct DummyPublics { $( pub $public : DecafPoint, )+ }
+                    struct DummyPublics { $( pub $public : RistrettoPoint, )+ }
                     let dummy_publics = DummyPublics {
-                        $( $public : DecafPoint::random(&mut csprng) , )+
+                        $( $public : RistrettoPoint::random(&mut csprng) , )+
                     };
 
                     let publics = Publics {
@@ -437,14 +437,14 @@ mod tests {
     use self::test::Bencher;
 
     use curve25519_dalek::constants as dalek_constants;
-    use curve25519_dalek::decaf::DecafPoint;
+    use curve25519_dalek::ristretto::RistrettoPoint;
     use curve25519_dalek::scalar::Scalar;
     
     #[bench]
     fn create_gen_dleq(b: &mut Bencher) {
         let mut csprng = OsRng::new().unwrap();
-        let G = &dalek_constants::DECAF_ED25519_BASEPOINT;
-        let H = DecafPoint::hash_from_bytes::<Sha256>(G.compress().as_bytes());
+        let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
+        let H = RistrettoPoint::hash_from_bytes::<Sha256>(G.compress().as_bytes());
 
         create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
 
@@ -461,8 +461,8 @@ mod tests {
     #[bench]
     fn verify_gen_dleq(b: &mut Bencher) {
         let mut csprng = OsRng::new().unwrap();
-        let G = &dalek_constants::DECAF_ED25519_BASEPOINT;
-        let H = DecafPoint::hash_from_bytes::<Sha256>(G.compress().as_bytes());
+        let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
+        let H = RistrettoPoint::hash_from_bytes::<Sha256>(G.compress().as_bytes());
 
         create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
 
@@ -480,8 +480,8 @@ mod tests {
     #[test]
     fn create_and_verify_gen_dleq() {
         let mut csprng = OsRng::new().unwrap();
-        let G = &dalek_constants::DECAF_ED25519_BASEPOINT;
-        let H = DecafPoint::hash_from_bytes::<Sha256>(G.compress().as_bytes());
+        let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
+        let H = RistrettoPoint::hash_from_bytes::<Sha256>(G.compress().as_bytes());
 
         create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
 

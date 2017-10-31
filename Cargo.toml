@@ -22,6 +22,9 @@ serde_derive = "1.0"
 serde_cbor = "0.6"
 
 [dependencies.curve25519-dalek]
-features = ["yolocrypto", "serde", "nightly"]
-version = "^0.10"
+features = ["serde", "nightly"]
+version = "^0.12"
+
+[replace]
+"curve25519-dalek:0.12.1" = { git = "https://github.com/hdevalence/curve25519-dalek", branch="feature/ristretto_r2" }
 
