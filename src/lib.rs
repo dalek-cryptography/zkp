@@ -316,11 +316,7 @@ macro_rules! create_nipk {
 
                     let responses = Responses{
                         $(
-                            $secret : Scalar::multiply_add(
-                                &challenge,
-                                &secrets.$secret,
-                                &rand.$secret
-                            ),
+                            $secret : &(&challenge * secrets.$secret) + &rand.$secret,
                         )+
                     };
 
