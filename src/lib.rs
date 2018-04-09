@@ -73,7 +73,7 @@ macro_rules! __compute_commitments_consttime {
     (($publics:ident, $scalars:ident) $($lhs:ident = $statement:tt),+) => {
         Commitments {
             $( $lhs :
-               multiscalar_mult(
+               multiscalar_mul(
                    __compute_formula_scalarlist!(($publics, $scalars) $statement),
                    __compute_formula_pointlist!(($publics, $scalars) $statement),
                )
@@ -88,7 +88,7 @@ macro_rules! __recompute_commitments_vartime {
     (($publics:ident, $scalars:ident, $minus_c:ident) $($lhs:ident = $statement:tt),+) => {
         Commitments {
             $( $lhs :
-               vartime::multiscalar_mult(
+               vartime::multiscalar_mul(
                    __compute_formula_scalarlist!(($publics, $scalars) $statement)
                        .into_iter()
                        .chain(iter::once(&($minus_c)))
@@ -194,14 +194,14 @@ macro_rules! __recompute_commitments_vartime {
 /// use rand::OsRng;
 ///
 /// extern crate sha2;
-/// use sha2::Sha256;
+/// use sha2::Sha512;
 ///
 /// extern crate bincode;
 ///
 /// # fn main() {
 /// let mut csprng = OsRng::new().unwrap();
 /// let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
-/// let H = RistrettoPoint::hash_from_bytes::<Sha256>(G.compress().as_bytes());
+/// let H = RistrettoPoint::hash_from_bytes::<Sha512>(G.compress().as_bytes());
 ///
 /// create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
 ///
@@ -243,7 +243,7 @@ macro_rules! create_nipk {
         mod $proof_module_name {
             use $crate::curve25519_dalek::scalar::Scalar;
             use $crate::curve25519_dalek::ristretto::RistrettoPoint;
-            use $crate::curve25519_dalek::ristretto::multiscalar_mult;
+            use $crate::curve25519_dalek::ristretto::multiscalar_mul;
             use $crate::curve25519_dalek::ristretto::vartime;
             use $crate::sha2::{Digest, Sha512};
             use $crate::rand::Rng;
@@ -428,7 +428,7 @@ mod tests {
     extern crate test;
 
     use rand::OsRng;
-    use sha2::Sha256;
+    use sha2::Sha512;
     use self::test::Bencher;
 
     use curve25519_dalek::constants as dalek_constants;
@@ -439,7 +439,7 @@ mod tests {
     fn create_gen_dleq(b: &mut Bencher) {
         let mut csprng = OsRng::new().unwrap();
         let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
-        let H = RistrettoPoint::hash_from_bytes::<Sha256>(G.compress().as_bytes());
+        let H = RistrettoPoint::hash_from_bytes::<Sha512>(G.compress().as_bytes());
 
         create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
 
@@ -457,7 +457,7 @@ mod tests {
     fn verify_gen_dleq(b: &mut Bencher) {
         let mut csprng = OsRng::new().unwrap();
         let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
-        let H = RistrettoPoint::hash_from_bytes::<Sha256>(G.compress().as_bytes());
+        let H = RistrettoPoint::hash_from_bytes::<Sha512>(G.compress().as_bytes());
 
         create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
 
@@ -476,7 +476,7 @@ mod tests {
     fn create_and_verify_gen_dleq() {
         let mut csprng = OsRng::new().unwrap();
         let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
-        let H = RistrettoPoint::hash_from_bytes::<Sha256>(G.compress().as_bytes());
+        let H = RistrettoPoint::hash_from_bytes::<Sha512>(G.compress().as_bytes());
 
         create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
 
