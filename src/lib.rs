@@ -215,7 +215,7 @@ macro_rules! __recompute_commitments_vartime {
 /// let proof = dleq::Proof::create(&mut csprng, publics, secrets);
 ///
 /// // Serialize to bincode representation
-/// let proof_bytes = bincode::serialize(&proof, bincode::Infinite).unwrap();
+/// let proof_bytes = bincode::serialize(&proof).unwrap();
 ///
 /// // Send bytes over the wire here ...
 ///
@@ -489,7 +489,7 @@ mod tests {
 
         let proof = dleq::Proof::create(&mut csprng, publics, secrets);
         // serialize to bincode representation
-        let proof_bytes = bincode::serialize(&proof, bincode::Infinite).unwrap();
+        let proof_bytes = bincode::serialize(&proof).unwrap();
         // parse bytes back to memory
         let parsed_proof: dleq::Proof
             = bincode::deserialize(&proof_bytes).unwrap();
