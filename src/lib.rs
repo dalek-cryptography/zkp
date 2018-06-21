@@ -73,7 +73,7 @@ macro_rules! __compute_commitments_consttime {
     (($publics:ident, $scalars:ident) $($lhs:ident = $statement:tt),+) => {
         Commitments {
             $( $lhs :
-               multiscalar_mul(
+               RistrettoPoint::multiscalar_mul(
                    __compute_formula_scalarlist!(($publics, $scalars) $statement),
                    __compute_formula_pointlist!(($publics, $scalars) $statement),
                )
@@ -88,7 +88,7 @@ macro_rules! __recompute_commitments_vartime {
     (($publics:ident, $scalars:ident, $minus_c:ident) $($lhs:ident = $statement:tt),+) => {
         Commitments {
             $( $lhs :
-               vartime::multiscalar_mul(
+               RistrettoPoint::vartime_multiscalar_mul(
                    __compute_formula_scalarlist!(($publics, $scalars) $statement)
                        .into_iter()
                        .chain(iter::once(&($minus_c)))
@@ -243,10 +243,9 @@ macro_rules! create_nipk {
         mod $proof_module_name {
             use $crate::curve25519_dalek::scalar::Scalar;
             use $crate::curve25519_dalek::ristretto::RistrettoPoint;
-            use $crate::curve25519_dalek::ristretto::multiscalar_mul;
-            use $crate::curve25519_dalek::ristretto::vartime;
+            use $crate::curve25519_dalek::traits::{MultiscalarMul, VartimeMultiscalarMul};
             use $crate::sha2::{Digest, Sha512};
-            use $crate::rand::Rng;
+            use $crate::rand::{Rng, CryptoRng};
 
             use std::iter;
 
@@ -285,7 +284,7 @@ macro_rules! create_nipk {
                 /// Create a `Proof`, in constant time, from the given
                 /// `Publics` and `Secrets`.
                 #[allow(dead_code)]
-                pub fn create<R: Rng>(
+                pub fn create<R: Rng + CryptoRng>(
                     csprng: &mut R,
                     publics: Publics,
                     secrets: Secrets,

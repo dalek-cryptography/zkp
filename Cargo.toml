@@ -14,7 +14,7 @@ exclude = [
 
 [dependencies]
 sha2 = "^0.7"
-rand = "^0.3"
+rand = "0.5"
 serde = "1.0"
 serde_derive = "1.0"
 
@@ -23,5 +23,6 @@ bincode = "1"
 
 [dependencies.curve25519-dalek]
 features = ["serde", "nightly"]
-version = "^0.16"
+version = "0.17"
+
 
