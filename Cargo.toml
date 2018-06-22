@@ -23,6 +23,11 @@ bincode = "1"
 
 [dependencies.curve25519-dalek]
 features = ["serde", "nightly"]
-version = "0.17"
+version = "0.18"
+
+[features]
+u64_backend = ["curve25519-dalek/u64_backend"]
+avx2_backend = ["curve25519-dalek/avx2_backend"]
+default = ["u64_backend"]
 
 
