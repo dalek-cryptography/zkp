@@ -1,6 +1,6 @@
 [package]
 name = "zkp"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["Henry de Valence <hdevalence@hdevalence.ca>"]
 license = "CC0-1.0"
 repository = "https://github.com/hdevalence/zkp"
