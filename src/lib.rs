@@ -205,7 +205,7 @@ macro_rules! __recompute_commitments_vartime {
 ///
 /// create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
 ///
-/// let x = Scalar::from_u64(89327492234);
+/// let x = Scalar::from(89327492234u64);
 /// let A =  G * &x;
 /// let B = &H * &x;
 ///
@@ -462,7 +462,7 @@ mod tests {
 
         create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
 
-        let x = Scalar::from_u64(89327492234);
+        let x = Scalar::from(89327492234u64);
         let A =  G * &x;
         let B = &H * &x;
 
@@ -480,7 +480,7 @@ mod tests {
 
         create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
 
-        let x = Scalar::from_u64(89327492234);
+        let x = Scalar::from(89327492234u64);
         let A =  G * &x;
         let B = &H * &x;
 
@@ -499,7 +499,7 @@ mod tests {
 
         create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
 
-        let x = Scalar::from_u64(89327492234);
+        let x = Scalar::from(89327492234u64);
         let A =  G * &x;
         let B = &H * &x;
 

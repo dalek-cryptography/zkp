@@ -1,6 +1,6 @@
 [package]
 name = "zkp"
-version = "0.4.2"
+version = "0.4.3"
 authors = ["Henry de Valence <hdevalence@hdevalence.ca>"]
 license = "CC0-1.0"
 repository = "https://github.com/hdevalence/zkp"
@@ -23,7 +23,7 @@ bincode = "1"
 
 [dependencies.curve25519-dalek]
 features = ["serde", "nightly"]
-version = "0.18"
+version = "0.19"
 
 [features]
 u64_backend = ["curve25519-dalek/u64_backend"]
