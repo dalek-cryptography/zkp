@@ -3,7 +3,7 @@
 This crate has an experimental zero-knowledge proof compiler
 implemented using Rust macros.
 
-It provides a DSL resembing Camenisch-Stadler notation for proving
+It provides a DSL resembling Camenisch-Stadler notation for proving
 statements about discrete logarithms in the Decaf group on
 Curve25519, as implemented in
 [`curve25519-dalek`](https://github.com/isislovecruft/curve25519-dalek).
