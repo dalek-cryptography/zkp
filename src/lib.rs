@@ -237,7 +237,7 @@ macro_rules! create_nipk {
         ( $($public:ident),+ ) // Public variables, sep by commas
         :
         // List of statements to prove
-        // Format: LHS = ( ... RHS expr ... ), 
+        // Format: LHS = ( ... RHS expr ... ),
         $($lhs:ident = $statement:tt),+
     ) => {
         mod $proof_module_name {
@@ -333,7 +333,7 @@ macro_rules! create_nipk {
                     let commitments = __recompute_commitments_vartime!(
                         (publics, responses, minus_c) $($lhs = $statement),*
                     );
-                    
+
                     let mut hash = Sha512::default();
                     // Add each public point into the hash
                     $(
@@ -343,7 +343,7 @@ macro_rules! create_nipk {
                     $(
                         hash.input(commitments.$lhs.compress().as_bytes());
                     )*
-                        
+
                     // Recompute challenge
                     let challenge = Scalar::from_hash(hash);
 
@@ -375,7 +375,7 @@ macro_rules! create_nipk {
                     let publics = Publics {
                         $( $public : &dummy_publics.$public , )+
                     };
-                    
+
                     struct DummySecrets { $( pub $secret : Scalar, )+ }
                     let dummy_secrets = DummySecrets {
                         $( $secret : Scalar::random(&mut csprng) , )+
@@ -402,7 +402,7 @@ macro_rules! create_nipk {
                     let publics = Publics {
                         $( $public : &dummy_publics.$public , )+
                     };
-                    
+
                     struct DummySecrets { $( pub $secret : Scalar, )+ }
                     let dummy_secrets = DummySecrets {
                         $( $secret : Scalar::random(&mut csprng) , )+
@@ -426,9 +426,9 @@ mod tests {
     extern crate bincode;
     extern crate test;
 
+    use self::test::Bencher;
     use rand::OsRng;
     use sha2::Sha512;
-    use self::test::Bencher;
 
     use curve25519_dalek::constants as dalek_constants;
     use curve25519_dalek::ristretto::RistrettoPoint;
@@ -453,7 +453,7 @@ mod tests {
                  + X_7*m_7 + X_8*m_8 + X_9*m_9 + X_10*m_10 + Q*minus_z_Q)
         }
     }
-    
+
     #[bench]
     fn create_gen_dleq(b: &mut Bencher) {
         let mut csprng = OsRng::new().unwrap();
@@ -463,15 +463,20 @@ mod tests {
         create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
 
         let x = Scalar::from(89327492234u64);
-        let A =  G * &x;
+        let A = G * &x;
         let B = &H * &x;
 
-        let publics = dleq::Publics{A: &A, B: &B, G: G, H: &H};
-        let secrets = dleq::Secrets{x: &x};
+        let publics = dleq::Publics {
+            A: &A,
+            B: &B,
+            G: G,
+            H: &H,
+        };
+        let secrets = dleq::Secrets { x: &x };
 
         b.iter(|| dleq::Proof::create(&mut csprng, publics, secrets));
     }
-    
+
     #[bench]
     fn verify_gen_dleq(b: &mut Bencher) {
         let mut csprng = OsRng::new().unwrap();
@@ -481,11 +486,16 @@ mod tests {
         create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
 
         let x = Scalar::from(89327492234u64);
-        let A =  G * &x;
+        let A = G * &x;
         let B = &H * &x;
 
-        let publics = dleq::Publics{A: &A, B: &B, G: G, H: &H};
-        let secrets = dleq::Secrets{x: &x};
+        let publics = dleq::Publics {
+            A: &A,
+            B: &B,
+            G: G,
+            H: &H,
+        };
+        let secrets = dleq::Secrets { x: &x };
 
         let proof = dleq::Proof::create(&mut csprng, publics, secrets);
         b.iter(|| proof.verify(publics).is_ok());
@@ -500,18 +510,22 @@ mod tests {
         create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
 
         let x = Scalar::from(89327492234u64);
-        let A =  G * &x;
+        let A = G * &x;
         let B = &H * &x;
 
-        let publics = dleq::Publics{A: &A, B: &B, G: G, H: &H};
-        let secrets = dleq::Secrets{x: &x};
+        let publics = dleq::Publics {
+            A: &A,
+            B: &B,
+            G: G,
+            H: &H,
+        };
+        let secrets = dleq::Secrets { x: &x };
 
         let proof = dleq::Proof::create(&mut csprng, publics, secrets);
         // serialize to bincode representation
         let proof_bytes = bincode::serialize(&proof).unwrap();
         // parse bytes back to memory
-        let parsed_proof: dleq::Proof
-            = bincode::deserialize(&proof_bytes).unwrap();
+        let parsed_proof: dleq::Proof = bincode::deserialize(&proof_bytes).unwrap();
 
         assert!(parsed_proof.verify(publics).is_ok());
     }
