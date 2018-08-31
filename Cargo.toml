@@ -13,7 +13,8 @@ exclude = [
 ]
 
 [dependencies]
-sha2 = "^0.7"
+sha2 = "0.7"
+merlin = "0.2"
 rand = "0.5"
 serde = "1.0"
 serde_derive = "1.0"

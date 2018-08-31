@@ -31,9 +31,11 @@ pub extern crate serde_derive;
 #[doc(hidden)]
 pub extern crate curve25519_dalek;
 #[doc(hidden)]
-pub extern crate rand;
+pub extern crate merlin;
 #[doc(hidden)]
-pub extern crate sha2;
+pub extern crate rand;
+
+pub use merlin::Transcript;
 
 #[doc(hidden)]
 #[macro_export]
@@ -158,13 +160,17 @@ macro_rules! __recompute_commitments_vartime {
 /// pub struct Proof { ... }
 ///
 /// impl Proof {
-///     pub fn create<R: Rng>(
-///         csprng: &mut R,
+///     pub fn create(
+///         transcript: &mut Transcript,
 ///         publics: Publics,
 ///         secrets: Secrets,
 ///     ) -> Proof { ... }
 ///
-///     pub fn verify(&self, publics: Publics) -> Result<(),()> { ... }
+///     pub fn verify(
+///         &self,
+///         &mut Transcript,
+///         publics: Publics,
+///     ) -> Result<(),()> { ... }
 /// }
 /// ```
 ///
@@ -184,22 +190,21 @@ macro_rules! __recompute_commitments_vartime {
 ///
 /// #[macro_use]
 /// extern crate zkp;
+/// use zkp::Transcript;
 ///
 /// extern crate curve25519_dalek;
 /// use curve25519_dalek::constants as dalek_constants;
 /// use curve25519_dalek::ristretto::RistrettoPoint;
 /// use curve25519_dalek::scalar::Scalar;
 ///
-/// extern crate rand;
-/// use rand::OsRng;
-///
 /// extern crate sha2;
 /// use sha2::Sha512;
 ///
 /// extern crate bincode;
 ///
+/// // ...
+///
 /// # fn main() {
-/// let mut csprng = OsRng::new().unwrap();
 /// let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
 /// let H = RistrettoPoint::hash_from_bytes::<Sha512>(G.compress().as_bytes());
 ///
@@ -212,7 +217,8 @@ macro_rules! __recompute_commitments_vartime {
 /// let publics = dleq::Publics{A: &A, B: &B, G: G, H: &H};
 /// let secrets = dleq::Secrets{x: &x};
 ///
-/// let proof = dleq::Proof::create(&mut csprng, publics, secrets);
+/// let mut transcript = Transcript::new(b"DLEQExample");
+/// let proof = dleq::Proof::create(&mut transcript, publics, secrets);
 ///
 /// // Serialize to bincode representation
 /// let proof_bytes = bincode::serialize(&proof).unwrap();
@@ -223,8 +229,9 @@ macro_rules! __recompute_commitments_vartime {
 /// let parsed_proof: dleq::Proof
 ///     = bincode::deserialize(&proof_bytes).unwrap();
 ///
-/// // Check the proof.
-/// assert!(parsed_proof.verify(publics).is_ok());
+/// // Check the proof with a fresh transcript.
+/// let mut transcript = Transcript::new(b"DLEQExample");
+/// assert!(parsed_proof.verify(&mut transcript, publics).is_ok());
 /// # }
 /// ```
 #[macro_export]
@@ -237,15 +244,15 @@ macro_rules! create_nipk {
         ( $($public:ident),+ ) // Public variables, sep by commas
         :
         // List of statements to prove
-        // Format: LHS = ( ... RHS expr ... ), 
+        // Format: LHS = ( ... RHS expr ... ),
         $($lhs:ident = $statement:tt),+
     ) => {
         mod $proof_module_name {
             use $crate::curve25519_dalek::scalar::Scalar;
             use $crate::curve25519_dalek::ristretto::RistrettoPoint;
             use $crate::curve25519_dalek::traits::{MultiscalarMul, VartimeMultiscalarMul};
-            use $crate::sha2::{Digest, Sha512};
-            use $crate::rand::{Rng, CryptoRng};
+            use $crate::merlin::Transcript;
+            use $crate::rand::thread_rng;
 
             use std::iter;
 
@@ -281,37 +288,62 @@ macro_rules! create_nipk {
             }
 
             impl Proof {
-                /// Create a `Proof`, in constant time, from the given
-                /// `Publics` and `Secrets`.
+                /// Create a `Proof` from the given `Publics` and `Secrets`.
                 #[allow(dead_code)]
-                pub fn create<R: Rng + CryptoRng>(
-                    csprng: &mut R,
+                pub fn create(
+                    transcript: &mut Transcript,
                     publics: Publics,
                     secrets: Secrets,
                 ) -> Proof {
+                    // Commit public data to the transcript.
+                    transcript.commit_bytes(b"domain-sep", stringify!($proof_module_name).as_bytes());
+                    $(
+                        transcript.commit_bytes(
+                            stringify!($public).as_bytes(),
+                            publics.$public.compress().as_bytes(),
+                        );
+                    )+
+
+                    // Construct a TranscriptRng
+                    let rng_ctor = transcript.fork_transcript();
+                    $(
+                        let rng_ctor = rng_ctor.commit_witness_bytes(
+                            stringify!($secret).as_bytes(),
+                            secrets.$secret.as_bytes(),
+                        );
+                    )+
+                    let mut transcript_rng = rng_ctor.reseed_from_rng(&mut thread_rng());
+
+                    // Use the TranscriptRng to generate blinding factors
                     let rand = Randomnesses{
                         $(
-                            $secret : Scalar::random(csprng),
+                            $secret : Scalar::random(&mut transcript_rng),
                         )+
                     };
+
+                    // Form a commitment to the blinding factors for each statement LHS
+                    //
                     // $statement_rhs = `X * x + Y * y + Z * z`
                     // should become
                     // `publics.X * rand.x + publics.Y * rand.y + publics.Z * rand.z`
-                    let commitments: Commitments;
-                    commitments = __compute_commitments_consttime!(
+                    let commitments = __compute_commitments_consttime!(
                         (publics, rand) $($lhs = $statement),*
                     );
 
-                    let mut hash = Sha512::default();
-
+                    // Add all commitments to the transcript
                     $(
-                        hash.input(publics.$public.compress().as_bytes());
-                    )+
-                    $(
-                        hash.input(commitments.$lhs.compress().as_bytes());
+                        transcript.commit_bytes(
+                            stringify!(com $lhs).as_bytes(),
+                            commitments.$lhs.compress().as_bytes(),
+                        );
                     )+
 
-                    let challenge = Scalar::from_hash(hash);
+                    // Obtain a scalar challenge
+                    let challenge = {
+                        let mut bytes = [0; 64];
+                        transcript.challenge_bytes(b"chal", &mut bytes);
+                        Scalar::from_bytes_mod_order_wide(&bytes)
+                    };
 
                     let responses = Responses{
                         $(
@@ -324,7 +356,12 @@ macro_rules! create_nipk {
 
                 /// Verify the `Proof` using the public parameters `Publics`.
                 #[allow(dead_code)]
-                pub fn verify(&self, publics: Publics) -> Result<(),()> {
+                pub fn verify(
+                    &self,
+                    transcript: &mut Transcript,
+                    publics: Publics,
+                ) -> Result<(),()> {
+                    // Recompute the prover's commitments based on their claimed challenge value:
                     // `A = X * x + Y * y`
                     // should become
                     // `publics.X * responses.x + publics.Y * responses.y - publics.A * self.challenge`
@@ -333,19 +370,30 @@ macro_rules! create_nipk {
                     let commitments = __recompute_commitments_vartime!(
                         (publics, responses, minus_c) $($lhs = $statement),*
                     );
-                    
-                    let mut hash = Sha512::default();
-                    // Add each public point into the hash
+
+                    // Commit public data to the transcript.
+                    transcript.commit_bytes(b"domain-sep", stringify!($proof_module_name).as_bytes());
                     $(
-                        hash.input(publics.$public.compress().as_bytes());
+                        transcript.commit_bytes(
+                            stringify!($public).as_bytes(),
+                            publics.$public.compress().as_bytes(),
+                        );
                     )+
-                    // Add each (recomputed) commitment into the hash
+
+                    // Commit the recomputed commitments to the transcript.
                     $(
-                        hash.input(commitments.$lhs.compress().as_bytes());
-                    )*
-                        
+                        transcript.commit_bytes(
+                            stringify!(com $lhs).as_bytes(),
+                            commitments.$lhs.compress().as_bytes(),
+                        );
+                    )+
+
                     // Recompute challenge
-                    let challenge = Scalar::from_hash(hash);
+                    let challenge = {
+                        let mut bytes = [0; 64];
+                        transcript.challenge_bytes(b"chal", &mut bytes);
+                        Scalar::from_bytes_mod_order_wide(&bytes)
+                    };
 
                     if challenge == self.challenge { Ok(()) } else { Err(()) }
                 }
@@ -375,7 +423,7 @@ macro_rules! create_nipk {
                     let publics = Publics {
                         $( $public : &dummy_publics.$public , )+
                     };
-                    
+
                     struct DummySecrets { $( pub $secret : Scalar, )+ }
                     let dummy_secrets = DummySecrets {
                         $( $secret : Scalar::random(&mut csprng) , )+
@@ -385,7 +433,10 @@ macro_rules! create_nipk {
                         $( $secret : &dummy_secrets.$secret , )+
                     };
 
-                    b.iter(|| Proof::create(&mut csprng, publics, secrets));
+                    b.iter(|| {
+                        let mut transcript = Transcript::new(b"BenchmarkProve");
+                        Proof::create(&mut transcript, publics, secrets)
+                    });
                 }
 
                 #[bench]
@@ -402,7 +453,7 @@ macro_rules! create_nipk {
                     let publics = Publics {
                         $( $public : &dummy_publics.$public , )+
                     };
-                    
+
                     struct DummySecrets { $( pub $secret : Scalar, )+ }
                     let dummy_secrets = DummySecrets {
                         $( $secret : Scalar::random(&mut csprng) , )+
@@ -412,9 +463,13 @@ macro_rules! create_nipk {
                         $( $secret : &dummy_secrets.$secret , )+
                     };
 
-                    let p = Proof::create(&mut csprng, publics, secrets);
+                    let mut transcript = Transcript::new(b"BenchmarkVerify");
+                    let p = Proof::create(&mut transcript, publics, secrets);
 
-                    b.iter(|| p.verify(publics));
+                    b.iter(|| {
+                        let mut transcript = Transcript::new(b"BenchmarkVerify");
+                        p.verify(&mut transcript, publics).is_ok()
+                    });
                 }
             }
         }
@@ -424,15 +479,17 @@ macro_rules! create_nipk {
 #[cfg(test)]
 mod tests {
     extern crate bincode;
+    extern crate sha2;
     extern crate test;
 
-    use rand::OsRng;
-    use sha2::Sha512;
+    use self::sha2::Sha512;
     use self::test::Bencher;
 
     use curve25519_dalek::constants as dalek_constants;
     use curve25519_dalek::ristretto::RistrettoPoint;
     use curve25519_dalek::scalar::Scalar;
+
+    use merlin::Transcript;
 
     mod cmz13 {
         // Proof statement for "credential presentation with 10 hidden attributes" from CMZ'13.
@@ -453,66 +510,86 @@ mod tests {
                  + X_7*m_7 + X_8*m_8 + X_9*m_9 + X_10*m_10 + Q*minus_z_Q)
         }
     }
-    
+
     #[bench]
     fn create_gen_dleq(b: &mut Bencher) {
-        let mut csprng = OsRng::new().unwrap();
         let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
         let H = RistrettoPoint::hash_from_bytes::<Sha512>(G.compress().as_bytes());
 
         create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
 
         let x = Scalar::from(89327492234u64);
-        let A =  G * &x;
+        let A = G * &x;
         let B = &H * &x;
 
-        let publics = dleq::Publics{A: &A, B: &B, G: G, H: &H};
-        let secrets = dleq::Secrets{x: &x};
+        let publics = dleq::Publics {
+            A: &A,
+            B: &B,
+            G: G,
+            H: &H,
+        };
+        let secrets = dleq::Secrets { x: &x };
 
-        b.iter(|| dleq::Proof::create(&mut csprng, publics, secrets));
+        b.iter(|| {
+            let mut transcript = Transcript::new(b"DLEQBenchCreate");
+            dleq::Proof::create(&mut transcript, publics, secrets)
+        });
     }
-    
+
     #[bench]
     fn verify_gen_dleq(b: &mut Bencher) {
-        let mut csprng = OsRng::new().unwrap();
         let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
         let H = RistrettoPoint::hash_from_bytes::<Sha512>(G.compress().as_bytes());
 
         create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
 
         let x = Scalar::from(89327492234u64);
-        let A =  G * &x;
+        let A = G * &x;
         let B = &H * &x;
 
-        let publics = dleq::Publics{A: &A, B: &B, G: G, H: &H};
-        let secrets = dleq::Secrets{x: &x};
+        let publics = dleq::Publics {
+            A: &A,
+            B: &B,
+            G: G,
+            H: &H,
+        };
+        let secrets = dleq::Secrets { x: &x };
 
-        let proof = dleq::Proof::create(&mut csprng, publics, secrets);
-        b.iter(|| proof.verify(publics).is_ok());
+        let mut transcript = Transcript::new(b"DLEQBenchVerify");
+        let proof = dleq::Proof::create(&mut transcript, publics, secrets);
+        b.iter(|| {
+            let mut transcript = Transcript::new(b"DLEQBenchVerify");
+            proof.verify(&mut transcript, publics).is_ok()
+        });
     }
 
     #[test]
     fn create_and_verify_gen_dleq() {
-        let mut csprng = OsRng::new().unwrap();
         let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
         let H = RistrettoPoint::hash_from_bytes::<Sha512>(G.compress().as_bytes());
 
         create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
 
         let x = Scalar::from(89327492234u64);
-        let A =  G * &x;
+        let A = G * &x;
         let B = &H * &x;
 
-        let publics = dleq::Publics{A: &A, B: &B, G: G, H: &H};
-        let secrets = dleq::Secrets{x: &x};
+        let publics = dleq::Publics {
+            A: &A,
+            B: &B,
+            G: G,
+            H: &H,
+        };
+        let secrets = dleq::Secrets { x: &x };
 
-        let proof = dleq::Proof::create(&mut csprng, publics, secrets);
+        let mut transcript = Transcript::new(b"DLEQTest");
+        let proof = dleq::Proof::create(&mut transcript, publics, secrets);
         // serialize to bincode representation
         let proof_bytes = bincode::serialize(&proof).unwrap();
         // parse bytes back to memory
-        let parsed_proof: dleq::Proof
-            = bincode::deserialize(&proof_bytes).unwrap();
+        let parsed_proof: dleq::Proof = bincode::deserialize(&proof_bytes).unwrap();
 
-        assert!(parsed_proof.verify(publics).is_ok());
+        let mut transcript = Transcript::new(b"DLEQTest");
+        assert!(parsed_proof.verify(&mut transcript, publics).is_ok());
     }
 }
