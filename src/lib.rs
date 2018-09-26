@@ -278,10 +278,10 @@ macro_rules! create_nipk {
 
             struct Commitments {$($lhs: RistrettoPoint,)+ }
             struct Randomnesses {$($secret : Scalar,)+}
-            #[derive(Serialize, Deserialize)]
+            #[derive(Clone, Serialize, Deserialize)]
             struct Responses {$($secret : Scalar,)+}
 
-            #[derive(Serialize, Deserialize)]
+            #[derive(Clone, Serialize, Deserialize)]
             pub struct Proof {
                 challenge: Scalar,
                 responses: Responses,
