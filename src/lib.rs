@@ -247,7 +247,7 @@ macro_rules! create_nipk {
         // Format: LHS = ( ... RHS expr ... ),
         $($lhs:ident = $statement:tt),+
     ) => {
-        mod $proof_module_name {
+        pub mod $proof_module_name {
             use $crate::curve25519_dalek::scalar::Scalar;
             use $crate::curve25519_dalek::ristretto::RistrettoPoint;
             use $crate::curve25519_dalek::traits::{MultiscalarMul, VartimeMultiscalarMul};
