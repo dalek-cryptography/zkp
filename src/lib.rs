@@ -9,6 +9,8 @@
 // Authors:
 // - Henry de Valence <hdevalence@hdevalence.ca>
 
+#![no_std]
+
 //! This crate has an experimental zero-knowledge proof compiler
 //! implemented using Rust macros.
 //!
@@ -34,6 +36,9 @@ pub extern crate curve25519_dalek;
 pub extern crate merlin;
 #[doc(hidden)]
 pub extern crate rand;
+#[cfg(feature = "std")]
+#[doc(hidden)]
+extern crate std;
 
 pub use merlin::Transcript;
 
@@ -185,6 +190,8 @@ macro_rules! __recompute_commitments_vartime {
 /// As an example, we can create and verify a DLEQ proof as follows:
 ///
 /// ```
+/// extern crate core;
+///
 /// #[macro_use]
 /// extern crate serde_derive;
 ///
@@ -254,7 +261,10 @@ macro_rules! create_nipk {
             use $crate::merlin::Transcript;
             use $crate::rand::thread_rng;
 
+            #[cfg(feature = "std")]
             use std::iter;
+            #[cfg(not(feature = "std"))]
+            use core::iter;
 
             #[derive(Copy, Clone)]
             pub struct Secrets<'a> {
