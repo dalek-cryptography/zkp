@@ -27,8 +27,7 @@ features = ["serde", "nightly"]
 version = "0.21"
 
 [features]
+u32_backend = ["curve25519-dalek/u32_backend"]
 u64_backend = ["curve25519-dalek/u64_backend"]
 avx2_backend = ["curve25519-dalek/avx2_backend"]
 default = ["u64_backend"]
-
-
