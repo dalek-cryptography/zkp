@@ -37,7 +37,6 @@ pub extern crate merlin;
 #[doc(hidden)]
 pub extern crate rand;
 #[cfg(feature = "std")]
-#[doc(hidden)]
 extern crate std;
 
 pub use merlin::Transcript;
