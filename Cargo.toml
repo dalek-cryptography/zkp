@@ -23,8 +23,9 @@ serde_derive = "1.0"
 bincode = "1"
 
 [dependencies.curve25519-dalek]
-features = ["serde", "nightly"]
+features = ["serde", "nightly", "alloc"]
 version = "0.21"
+default-features = false
 
 [features]
 default = ["u64_backend"]
