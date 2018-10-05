@@ -21,7 +21,7 @@
 //! EXPERIMENTAL**.  (I haven't actually checked carefully that the
 //! proofs are sound, for instance...)
 #![allow(non_snake_case)]
-#![feature(test)]
+#![cfg_attr(feature = "bench", feature(test))]
 
 extern crate serde;
 
@@ -399,7 +399,7 @@ macro_rules! create_nipk {
                 }
             }
 
-            #[cfg(test)]
+            #[cfg(all(feature = "bench", test))]
             mod bench {
                 extern crate test;
 
@@ -477,13 +477,11 @@ macro_rules! create_nipk {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     extern crate bincode;
     extern crate sha2;
-    extern crate test;
 
     use self::sha2::Sha512;
-    use self::test::Bencher;
 
     use curve25519_dalek::constants as dalek_constants;
     use curve25519_dalek::ristretto::RistrettoPoint;
@@ -510,6 +508,51 @@ mod tests {
                  + X_7*m_7 + X_8*m_8 + X_9*m_9 + X_10*m_10 + Q*minus_z_Q)
         }
     }
+
+    #[test]
+    fn create_and_verify_gen_dleq() {
+        let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
+        let H = RistrettoPoint::hash_from_bytes::<Sha512>(G.compress().as_bytes());
+
+        create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
+
+        let x = Scalar::from(89327492234u64);
+        let A = G * &x;
+        let B = &H * &x;
+
+        let publics = dleq::Publics {
+            A: &A,
+            B: &B,
+            G: G,
+            H: &H,
+        };
+        let secrets = dleq::Secrets { x: &x };
+
+        let mut transcript = Transcript::new(b"DLEQTest");
+        let proof = dleq::Proof::create(&mut transcript, publics, secrets);
+        // serialize to bincode representation
+        let proof_bytes = bincode::serialize(&proof).unwrap();
+        // parse bytes back to memory
+        let parsed_proof: dleq::Proof = bincode::deserialize(&proof_bytes).unwrap();
+
+        let mut transcript = Transcript::new(b"DLEQTest");
+        assert!(parsed_proof.verify(&mut transcript, publics).is_ok());
+    }
+}
+
+#[cfg(all(feature = "bench", test))]
+mod bench {
+    use super::*;
+
+    extern crate test;
+    extern crate sha2;
+
+    use self::test::Bencher;
+    use self::sha2::Sha512;
+
+    use curve25519_dalek::constants as dalek_constants;
+    use curve25519_dalek::ristretto::RistrettoPoint;
+    use curve25519_dalek::scalar::Scalar;
 
     #[bench]
     fn create_gen_dleq(b: &mut Bencher) {
@@ -561,35 +604,5 @@ mod tests {
             let mut transcript = Transcript::new(b"DLEQBenchVerify");
             proof.verify(&mut transcript, publics).is_ok()
         });
-    }
-
-    #[test]
-    fn create_and_verify_gen_dleq() {
-        let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
-        let H = RistrettoPoint::hash_from_bytes::<Sha512>(G.compress().as_bytes());
-
-        create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
-
-        let x = Scalar::from(89327492234u64);
-        let A = G * &x;
-        let B = &H * &x;
-
-        let publics = dleq::Publics {
-            A: &A,
-            B: &B,
-            G: G,
-            H: &H,
-        };
-        let secrets = dleq::Secrets { x: &x };
-
-        let mut transcript = Transcript::new(b"DLEQTest");
-        let proof = dleq::Proof::create(&mut transcript, publics, secrets);
-        // serialize to bincode representation
-        let proof_bytes = bincode::serialize(&proof).unwrap();
-        // parse bytes back to memory
-        let parsed_proof: dleq::Proof = bincode::deserialize(&proof_bytes).unwrap();
-
-        let mut transcript = Transcript::new(b"DLEQTest");
-        assert!(parsed_proof.verify(&mut transcript, publics).is_ok());
     }
 }
