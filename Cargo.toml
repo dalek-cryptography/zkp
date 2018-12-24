@@ -13,9 +13,9 @@ exclude = [
 ]
 
 [dependencies]
-sha2 = "0.7"
-merlin = "0.2"
-rand = "0.5"
+sha2 = "0.8"
+merlin = "1"
+rand = "0.6"
 serde = "1.0"
 serde_derive = "1.0"
 
@@ -24,7 +24,7 @@ bincode = "1"
 
 [dependencies.curve25519-dalek]
 features = ["serde", "nightly", "alloc"]
-version = "0.21"
+version = "1"
 default-features = false
 
 [features]

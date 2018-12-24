@@ -305,14 +305,14 @@ macro_rules! create_nipk {
                     )+
 
                     // Construct a TranscriptRng
-                    let rng_ctor = transcript.fork_transcript();
+                    let rng_builder = transcript.build_rng();
                     $(
-                        let rng_ctor = rng_ctor.commit_witness_bytes(
+                        let rng_builder = rng_builder.commit_witness_bytes(
                             stringify!($secret).as_bytes(),
                             secrets.$secret.as_bytes(),
                         );
                     )+
-                    let mut transcript_rng = rng_ctor.reseed_from_rng(&mut thread_rng());
+                    let mut transcript_rng = rng_builder.finalize(&mut thread_rng());
 
                     // Use the TranscriptRng to generate blinding factors
                     let rand = Randomnesses{
