@@ -37,7 +37,15 @@ pub extern crate rand;
 
 pub use merlin::Transcript;
 
+mod constraints;
+mod proofs;
+mod prover;
+mod verifier;
+
+pub use constraints::*;
+pub use proofs::*;
+pub use prover::*;
+pub use verifier::*;
 
 mod macros;
 pub use macros::*;
-
