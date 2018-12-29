@@ -96,13 +96,16 @@ fn verify_compact_dleq(b: &mut Bencher) {
         (prover.prove_compact(), cmpr_A, cmpr_B)
     };
 
+    let cmpr_G = G.compress();
+    let cmpr_H = H.compress();
+
     b.iter(|| {
         let mut transcript = Transcript::new(b"DLEQTest");
         let mut verifier = Verifier::new(b"DLEQProof", &mut transcript);
 
         let var_x = verifier.allocate_scalar(b"x");
-        let var_G = verifier.allocate_point(b"G", G.compress());
-        let var_H = verifier.allocate_point(b"H", H.compress());
+        let var_G = verifier.allocate_point(b"G", cmpr_G);
+        let var_H = verifier.allocate_point(b"H", cmpr_H);
         let var_A = verifier.allocate_point(b"A", cmpr_A);
         let var_B = verifier.allocate_point(b"B", cmpr_B);
 
@@ -162,13 +165,16 @@ fn verify_batchable_dleq(b: &mut Bencher) {
         (prover.prove_batchable(), cmpr_A, cmpr_B)
     };
 
+    let cmpr_G = G.compress();
+    let cmpr_H = H.compress();
+
     b.iter(|| {
         let mut transcript = Transcript::new(b"DLEQTest");
         let mut verifier = Verifier::new(b"DLEQProof", &mut transcript);
 
         let var_x = verifier.allocate_scalar(b"x");
-        let var_G = verifier.allocate_point(b"G", G.compress());
-        let var_H = verifier.allocate_point(b"H", H.compress());
+        let var_G = verifier.allocate_point(b"G", cmpr_G);
+        let var_H = verifier.allocate_point(b"H", cmpr_H);
         let var_A = verifier.allocate_point(b"A", cmpr_A);
         let var_B = verifier.allocate_point(b"B", cmpr_B);
 
