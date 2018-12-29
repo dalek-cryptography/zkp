@@ -52,7 +52,7 @@ impl<'a> Verifier<'a> {
         PointVar(self.points.len() - 1)
     }
 
-    pub fn verify_compact(mut self, proof: &CompactProof) -> Result<(), ()> {
+    pub fn verify_compact(self, proof: &CompactProof) -> Result<(), ()> {
         // Recompute the prover's commitments based on their claimed challenge value:
         let minus_c = -proof.challenge;
 
@@ -81,6 +81,52 @@ impl<'a> Verifier<'a> {
         } else {
             Err(())
         }
+    }
+
+    pub fn verify_batchable(self, proof: &BatchableProof) -> Result<(), ()> {
+        // Feed the prover's commitments into the transcript:
+        use std::str;
+        self.transcript.commit_bytes(b"commitments", b"");
+        println!("{:?}, {:?}", str::from_utf8(b"commitments"), b"");
+        for (i, commitment) in proof.commitments.iter().enumerate() {
+            let (ref lhs_var, ref rhs_lc) = self.constraints[i];
+            println!(
+                "{:?}, {:?}",
+                str::from_utf8(self.point_labels[lhs_var.0]),
+                &commitment
+            );
+            self.transcript
+                .commit_blinding_commitment(self.point_labels[lhs_var.0], &commitment);
+        }
+
+        let minus_c = -self.transcript.get_challenge(b"chal");
+
+        let points = self
+            .points
+            .iter()
+            .map(|point| point.decompress().ok_or(()))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        for (i, commitment) in proof.commitments.iter().enumerate() {
+            let (ref lhs_var, ref rhs_lc) = self.constraints[i];
+            let expected = commitment.decompress().ok_or(())?;
+            let recomputed = RistrettoPoint::vartime_multiscalar_mul(
+                rhs_lc
+                    .iter()
+                    .map(|(sc_var, _pt_var)| proof.responses[sc_var.0])
+                    .chain(iter::once(minus_c)),
+                rhs_lc
+                    .iter()
+                    .map(|(_sc_var, pt_var)| points[pt_var.0])
+                    .chain(iter::once(points[lhs_var.0])),
+            );
+
+            if expected != recomputed {
+                panic!();
+                return Err(());
+            }
+        }
+        Ok(())
     }
 }
 
