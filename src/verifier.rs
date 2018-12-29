@@ -85,16 +85,9 @@ impl<'a> Verifier<'a> {
 
     pub fn verify_batchable(self, proof: &BatchableProof) -> Result<(), ()> {
         // Feed the prover's commitments into the transcript:
-        use std::str;
         self.transcript.commit_bytes(b"commitments", b"");
-        println!("{:?}, {:?}", str::from_utf8(b"commitments"), b"");
         for (i, commitment) in proof.commitments.iter().enumerate() {
             let (ref lhs_var, ref rhs_lc) = self.constraints[i];
-            println!(
-                "{:?}, {:?}",
-                str::from_utf8(self.point_labels[lhs_var.0]),
-                &commitment
-            );
             self.transcript
                 .commit_blinding_commitment(self.point_labels[lhs_var.0], &commitment);
         }
