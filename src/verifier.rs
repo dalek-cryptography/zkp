@@ -3,7 +3,7 @@ use std::iter;
 
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
-use curve25519_dalek::traits::VartimeMultiscalarMul;
+use curve25519_dalek::traits::{IsIdentity, VartimeMultiscalarMul};
 
 use crate::Transcript;
 
@@ -103,18 +103,20 @@ impl<'a> Verifier<'a> {
         for (i, commitment) in proof.commitments.iter().enumerate() {
             let (ref lhs_var, ref rhs_lc) = self.constraints[i];
             let expected = commitment.decompress().ok_or(())?;
-            let recomputed = RistrettoPoint::vartime_multiscalar_mul(
+            let check = RistrettoPoint::vartime_multiscalar_mul(
                 rhs_lc
                     .iter()
                     .map(|(sc_var, _pt_var)| proof.responses[sc_var.0])
-                    .chain(iter::once(minus_c)),
+                    .chain(iter::once(minus_c))
+                    .chain(iter::once(Scalar::one())),
                 rhs_lc
                     .iter()
                     .map(|(_sc_var, pt_var)| points[pt_var.0])
-                    .chain(iter::once(points[lhs_var.0])),
+                    .chain(iter::once(points[lhs_var.0]))
+                    .chain(iter::once(-expected)),
             );
 
-            if expected != recomputed {
+            if !check.is_identity() {
                 panic!();
                 return Err(());
             }
