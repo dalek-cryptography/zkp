@@ -79,3 +79,43 @@ fn create_and_verify_compact_dleq() {
 
     assert!(verifier.verify_compact(&proof).is_ok());
 }
+
+#[test]
+fn create_and_verify_batchable_dleq() {
+    let G = dalek_constants::RISTRETTO_BASEPOINT_POINT;
+    let H = RistrettoPoint::hash_from_bytes::<Sha512>(G.compress().as_bytes());
+
+    let (proof, cmpr_A, cmpr_B) = {
+        let x = Scalar::from(89327492234u64);
+
+        let A = G * x;
+        let B = H * x;
+
+        let mut transcript = Transcript::new(b"DLEQTest");
+        let mut prover = Prover::new(b"DLEQProof", &mut transcript);
+
+        // XXX committing var names to transcript forces ordering (?)
+        let var_x = prover.allocate_scalar(b"x", x);
+        let (var_G, _) = prover.allocate_point(b"G", G);
+        let (var_H, _) = prover.allocate_point(b"H", H);
+        let (var_A, cmpr_A) = prover.allocate_point(b"A", A);
+        let (var_B, cmpr_B) = prover.allocate_point(b"B", B);
+
+        dleq_statement(&mut prover, var_x, var_A, var_B, var_G, var_H);
+
+        (prover.prove_batchable(), cmpr_A, cmpr_B)
+    };
+
+    let mut transcript = Transcript::new(b"DLEQTest");
+    let mut verifier = Verifier::new(b"DLEQProof", &mut transcript);
+
+    let var_x = verifier.allocate_scalar(b"x");
+    let var_G = verifier.allocate_point(b"G", G.compress());
+    let var_H = verifier.allocate_point(b"H", H.compress());
+    let var_A = verifier.allocate_point(b"A", cmpr_A);
+    let var_B = verifier.allocate_point(b"B", cmpr_B);
+
+    dleq_statement(&mut verifier, var_x, var_A, var_B, var_G, var_H);
+
+    assert!(verifier.verify_batchable(&proof).is_ok());
+}
