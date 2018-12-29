@@ -1,4 +1,4 @@
-use rand::thread_rng;
+use rand::{thread_rng, Rng};
 use std::iter;
 
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
@@ -94,34 +94,31 @@ impl<'a> Verifier<'a> {
 
         let minus_c = -self.transcript.get_challenge(b"chal");
 
+        let offset = self.points.len();
         let points = self
             .points
             .iter()
+            .chain(proof.commitments.iter())
             .map(|point| point.decompress().ok_or(()))
             .collect::<Result<Vec<_>, _>>()?;
 
-        for (i, commitment) in proof.commitments.iter().enumerate() {
+        let mut coeffs = vec![Scalar::zero(); points.len()];
+        for i in 0..self.constraints.len() {
             let (ref lhs_var, ref rhs_lc) = self.constraints[i];
-            let expected = commitment.decompress().ok_or(())?;
-            let check = RistrettoPoint::vartime_multiscalar_mul(
-                rhs_lc
-                    .iter()
-                    .map(|(sc_var, _pt_var)| proof.responses[sc_var.0])
-                    .chain(iter::once(minus_c))
-                    .chain(iter::once(Scalar::one())),
-                rhs_lc
-                    .iter()
-                    .map(|(_sc_var, pt_var)| points[pt_var.0])
-                    .chain(iter::once(points[lhs_var.0]))
-                    .chain(iter::once(-expected)),
-            );
+            let random_factor = Scalar::from(thread_rng().gen::<u128>());
 
-            if !check.is_identity() {
-                panic!();
-                return Err(());
+            coeffs[offset + i] += -random_factor;
+            coeffs[lhs_var.0] += random_factor * minus_c;
+            for (sc_var, pt_var) in rhs_lc {
+                coeffs[pt_var.0] += random_factor * proof.responses[sc_var.0];
             }
         }
-        Ok(())
+
+        if RistrettoPoint::vartime_multiscalar_mul(&coeffs, &points).is_identity() {
+            Ok(())
+        } else {
+            Err(())
+        }
     }
 }
 
