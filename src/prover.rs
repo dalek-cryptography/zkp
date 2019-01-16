@@ -9,6 +9,20 @@ use crate::Transcript;
 use super::constraints::*;
 use super::proofs::*;
 
+#[derive(Copy, Clone)]
+pub struct ScalarVar(usize);
+#[derive(Copy, Clone)]
+pub struct PointVar(usize);
+
+pub struct CommonProver {
+    proof_label: &'static [u8],
+    points: Vec<RistrettoPoint>,
+    compressed_points: Vec<CompressedRistretto>,
+    point_labels: Vec<&'static [u8]>,
+}
+
+pub struct ProverBuilder(CommonProver);
+
 pub struct Prover<'a> {
     transcript: &'a mut Transcript,
     scalars: Vec<Scalar>,
@@ -17,21 +31,53 @@ pub struct Prover<'a> {
     constraints: Vec<(PointVar, Vec<(ScalarVar, PointVar)>)>,
 }
 
-#[derive(Copy, Clone)]
-pub struct ScalarVar(usize);
-#[derive(Copy, Clone)]
-pub struct PointVar(usize);
+impl CommonProver {
+    pub fn new(proof_label: &'static [u8]) -> CommonProver {
+        CommonProver {
+            proof_label,
+            points: Vec::new(),
+            compressed_points: Vec::new(),
+            point_labels: Vec::new(),
+        }
+    }
 
-impl<'a> Prover<'a> {
-    pub fn new(proof_label: &[u8], transcript: &'a mut Transcript) -> Self {
-        transcript.domain_sep(proof_label);
+    pub fn allocate_point(&mut self, label: &'static [u8], assignment: RistrettoPoint) -> PointVar {
+        self.points.push(assignment);
+        self.compressed_points.push(assignment.compress());
+        self.point_labels.push(label);
+
+        PointVar(self.points.len() - 1)
+    }
+}
+
+impl From<CommonProver> for ProverBuilder {
+    fn from(common: CommonProver) -> ProverBuilder {
+        ProverBuilder(common)
+    }
+}
+
+impl ProverBuilder {
+    fn new_prover<'a>(self, transcript: &'a mut Transcript) -> Prover<'a> {
+        transcript.domain_sep(self.0.proof_label);
+
+        let it = Iterator::zip(self.0.point_labels.iter(), self.0.compressed_points.iter());
+        for (label, point) in it {
+            transcript.commit_point_var(label, point);
+        }
+
         Prover {
             transcript,
-            scalars: Vec::default(),
-            points: Vec::default(),
-            point_labels: Vec::default(),
-            constraints: Vec::default(),
+            scalars: Vec::new(),
+            points: self.0.points.clone(),
+            point_labels: self.0.point_labels.clone(),
+            constraints: Vec::new(),
         }
+    }
+}
+
+impl<'a> Prover<'a> {
+    pub fn new(proof_label: &'static [u8], transcript: &'a mut Transcript) -> Self {
+        ProverBuilder::from(CommonProver::new(proof_label)).new_prover(transcript)
     }
 
     pub fn allocate_scalar(&mut self, label: &'static [u8], assignment: Scalar) -> ScalarVar {
