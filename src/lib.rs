@@ -41,11 +41,13 @@ mod constraints;
 mod proofs;
 mod prover;
 mod verifier;
+mod batch_verifier;
 
 pub use constraints::*;
 pub use proofs::*;
 pub use prover::*;
 pub use verifier::*;
+pub use batch_verifier::*;
 
 mod macros;
 pub use macros::*;
