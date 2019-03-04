@@ -42,6 +42,7 @@ mod proofs;
 mod prover;
 mod verifier;
 mod batch_verifier;
+mod precomputation;
 
 pub use constraints::*;
 pub use proofs::*;

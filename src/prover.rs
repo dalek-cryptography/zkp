@@ -14,14 +14,11 @@ pub struct ScalarVar(usize);
 #[derive(Copy, Clone)]
 pub struct PointVar(usize);
 
-pub struct CommonProver {
-    proof_label: &'static [u8],
-    points: Vec<RistrettoPoint>,
-    compressed_points: Vec<CompressedRistretto>,
-    point_labels: Vec<&'static [u8]>,
+impl From<PrecomputedPointVar> for PointVar {
+    fn from(v: PrecomputedPointVar) -> PointVar {
+        PointVar(v.0)
+    }
 }
-
-pub struct ProverBuilder(CommonProver);
 
 pub struct Prover<'a> {
     transcript: &'a mut Transcript,
