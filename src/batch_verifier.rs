@@ -14,11 +14,11 @@ pub struct BatchVerifier<'a> {
     transcripts: Vec<&'a mut Transcript>,
     num_scalars: usize,
 
-    shared_points: Vec<CompressedRistretto>,
-    shared_point_labels: Vec<&'static [u8]>,
+    static_points: Vec<CompressedRistretto>,
+    static_point_labels: Vec<&'static [u8]>,
 
-    perproof_points: Vec<Vec<CompressedRistretto>>,
-    perproof_point_labels: Vec<&'static [u8]>,
+    instance_points: Vec<Vec<CompressedRistretto>>,
+    instance_point_labels: Vec<&'static [u8]>,
 
     constraints: Vec<(PointVar, Vec<(ScalarVar, PointVar)>)>,
 }
@@ -28,8 +28,8 @@ pub struct ScalarVar(usize);
 
 #[derive(Copy, Clone)]
 pub enum PointVar {
-    Shared(usize),
-    PerProof(usize),
+    Static(usize),
+    Instance(usize),
 }
 
 impl<'a> BatchVerifier<'a> {
@@ -40,10 +40,10 @@ impl<'a> BatchVerifier<'a> {
         BatchVerifier {
             transcripts,
             num_scalars: 0,
-            shared_points: Vec::default(),
-            shared_point_labels: Vec::default(),
-            perproof_points: Vec::default(),
-            perproof_point_labels: Vec::default(),
+            static_points: Vec::default(),
+            static_point_labels: Vec::default(),
+            instance_points: Vec::default(),
+            instance_point_labels: Vec::default(),
             constraints: Vec::default(),
         }
     }
@@ -56,7 +56,7 @@ impl<'a> BatchVerifier<'a> {
         ScalarVar(self.num_scalars - 1)
     }
 
-    pub fn allocate_shared_point(
+    pub fn allocate_static_point(
         &mut self,
         label: &'static [u8],
         assignment: CompressedRistretto,
@@ -64,13 +64,13 @@ impl<'a> BatchVerifier<'a> {
         for transcript in self.transcripts.iter_mut() {
             transcript.commit_point_var(label, &assignment);
         }
-        self.shared_points.push(assignment);
-        self.shared_point_labels.push(label);
+        self.static_points.push(assignment);
+        self.static_point_labels.push(label);
 
-        PointVar::Shared(self.shared_points.len() - 1)
+        PointVar::Static(self.static_points.len() - 1)
     }
 
-    pub fn allocate_perproof_point(
+    pub fn allocate_instance_point(
         &mut self,
         label: &'static [u8],
         assignments: Vec<CompressedRistretto>,
@@ -82,10 +82,10 @@ impl<'a> BatchVerifier<'a> {
                 transcript.commit_point_var(label, &assignment);
             }
         }
-        self.perproof_points.push(assignments);
-        self.perproof_point_labels.push(label);
+        self.instance_points.push(assignments);
+        self.instance_point_labels.push(label);
 
-        PointVar::PerProof(self.perproof_points.len() - 1)
+        PointVar::Instance(self.instance_points.len() - 1)
     }
 
     pub fn verify_batchable(self, proofs: &[BatchableProof]) -> Result<(), ()> {
