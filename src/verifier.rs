@@ -94,27 +94,28 @@ impl<'a> Verifier<'a> {
 
         let minus_c = -self.transcript.get_challenge(b"chal");
 
-        let offset = self.points.len();
-        let points = self
-            .points
-            .iter()
-            .chain(proof.commitments.iter())
-            .map(|point| point.decompress().ok_or(()))
-            .collect::<Result<Vec<_>, _>>()?;
+        let commitments_offset = self.points.len();
+        let combined_points = self.points.iter().chain(proof.commitments.iter());
 
-        let mut coeffs = vec![Scalar::zero(); points.len()];
+        let mut coeffs = vec![Scalar::zero(); self.points.len() + proof.commitments.len()];
         for i in 0..self.constraints.len() {
             let (ref lhs_var, ref rhs_lc) = self.constraints[i];
             let random_factor = Scalar::from(thread_rng().gen::<u128>());
 
-            coeffs[offset + i] += -random_factor;
+            coeffs[commitments_offset + i] += -random_factor;
             coeffs[lhs_var.0] += random_factor * minus_c;
             for (sc_var, pt_var) in rhs_lc {
                 coeffs[pt_var.0] += random_factor * proof.responses[sc_var.0];
             }
         }
 
-        if RistrettoPoint::vartime_multiscalar_mul(&coeffs, &points).is_identity() {
+        let check = RistrettoPoint::optional_multiscalar_mul(
+            &coeffs,
+            combined_points.map(|pt| pt.decompress()),
+        )
+        .ok_or(())?;
+
+        if check.is_identity() {
             Ok(())
         } else {
             Err(())
