@@ -8,6 +8,7 @@
 //
 // Authors:
 // - Henry de Valence <hdevalence@hdevalence.ca>
+#![allow(non_snake_case)]
 
 extern crate bincode;
 extern crate curve25519_dalek;
@@ -27,7 +28,6 @@ use curve25519_dalek::scalar::Scalar;
 use zkp::Transcript;
 use zkp::{CompactProof, Prover, SchnorrCS, Verifier};
 
-#[allow(non_snake_case)]
 fn dleq_statement<CS: SchnorrCS>(
     cs: &mut CS,
     x: CS::ScalarVar,

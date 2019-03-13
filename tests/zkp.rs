@@ -8,6 +8,7 @@
 //
 // Authors:
 // - Henry de Valence <hdevalence@hdevalence.ca>
+#![allow(non_snake_case)]
 
 extern crate bincode;
 extern crate curve25519_dalek;
