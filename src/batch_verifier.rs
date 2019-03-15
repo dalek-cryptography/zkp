@@ -10,6 +10,8 @@ use crate::Transcript;
 use super::constraints::*;
 use super::proofs::*;
 
+use util::Matrix;
+
 pub struct BatchVerifier<'a> {
     batch_size: usize,
     transcripts: Vec<&'a mut Transcript>,
@@ -139,7 +141,7 @@ impl<'a> BatchVerifier<'a> {
         let num_c = self.constraints.len();
 
         let mut static_coeffs = vec![Scalar::zero(); num_s];
-        let mut instance_coeffs = vec![vec![Scalar::zero(); self.batch_size]; num_i + num_c];
+        let mut instance_coeffs = Matrix::<Scalar>::new(num_i + num_c, self.batch_size);
 
         for i in 0..num_c {
             let (ref lhs_var, ref rhs_lc) = self.constraints[i];
@@ -148,14 +150,14 @@ impl<'a> BatchVerifier<'a> {
 
                 // rand*( sum(P_i, resp_i) - c * Q - Q_com) == 0
 
-                instance_coeffs[num_i + i][j] -= random_factor;
+                instance_coeffs[(num_i + i, j)] -= random_factor;
 
                 match lhs_var {
                     PointVar::Static(var_idx) => {
                         static_coeffs[*var_idx] += random_factor * minus_c[j];
                     }
                     PointVar::Instance(var_idx) => {
-                        instance_coeffs[*var_idx][j] += random_factor * minus_c[j];
+                        instance_coeffs[(*var_idx, j)] += random_factor * minus_c[j];
                     }
                 }
 
@@ -166,7 +168,7 @@ impl<'a> BatchVerifier<'a> {
                             static_coeffs[*var_idx] += random_factor * resp;
                         }
                         PointVar::Instance(var_idx) => {
-                            instance_coeffs[*var_idx][j] += random_factor * resp;
+                            instance_coeffs[(*var_idx, j)] += random_factor * resp;
                         }
                     }
                 }
@@ -176,20 +178,18 @@ impl<'a> BatchVerifier<'a> {
         let mut instance_points = self.instance_points.clone();
         for i in 0..num_c {
             let ith_commitments = proofs.iter().map(|proof| proof.commitments[i]);
-            instance_points.push(ith_commitments.collect());
+           instance_points.push(ith_commitments.collect());
         }
 
         let flat_instance_points = instance_points
             .iter()
             .flat_map(|inner| inner.iter().cloned())
             .collect::<Vec<CompressedRistretto>>();
-        let flat_instance_coeffs = instance_coeffs
-            .iter()
-            .flat_map(|inner| inner.iter().cloned())
-            .collect::<Vec<Scalar>>();
 
         let check = RistrettoPoint::optional_multiscalar_mul(
-            static_coeffs.iter().chain(flat_instance_coeffs.iter()),
+            static_coeffs
+                .iter()
+                .chain(instance_coeffs.row_major_entries()),
             self.static_points
                 .iter()
                 .chain(flat_instance_points.iter())
