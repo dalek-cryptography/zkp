@@ -56,6 +56,7 @@ impl<'a> Verifier<'a> {
         // Recompute the prover's commitments based on their claimed challenge value:
         let minus_c = -proof.challenge;
 
+        // XXX decompress up front
         self.transcript.commit_bytes(b"commitments", b"");
         for (lhs_var, rhs_lc) in &self.constraints {
             let commitment = RistrettoPoint::optional_multiscalar_mul(
@@ -98,6 +99,9 @@ impl<'a> Verifier<'a> {
         let combined_points = self.points.iter().chain(proof.commitments.iter());
 
         let mut coeffs = vec![Scalar::zero(); self.points.len() + proof.commitments.len()];
+        // For each constraint of the form Q = sum(P_i, x_i),
+        // we want to ensure Q_com = sum(P_i, resp_i) - c * Q,
+        // so add the check rand*( sum(P_i, resp_i) - c * Q - Q_com ) == 0
         for i in 0..self.constraints.len() {
             let (ref lhs_var, ref rhs_lc) = self.constraints[i];
             let random_factor = Scalar::from(thread_rng().gen::<u128>());

@@ -1,5 +1,5 @@
-use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::ristretto::CompressedRistretto;
+use curve25519_dalek::scalar::Scalar;
 
 pub struct CompactProof {
     pub challenge: Scalar,
