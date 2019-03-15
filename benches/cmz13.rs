@@ -10,6 +10,7 @@
 // - Henry de Valence <hdevalence@hdevalence.ca>
 
 #![feature(test)]
+#![allow(non_snake_case)]
 
 extern crate bincode;
 extern crate curve25519_dalek;
