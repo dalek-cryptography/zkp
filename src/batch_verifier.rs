@@ -178,7 +178,7 @@ impl<'a> BatchVerifier<'a> {
         let mut instance_points = self.instance_points.clone();
         for i in 0..num_c {
             let ith_commitments = proofs.iter().map(|proof| proof.commitments[i]);
-           instance_points.push(ith_commitments.collect());
+            instance_points.push(ith_commitments.collect());
         }
 
         let flat_instance_points = instance_points

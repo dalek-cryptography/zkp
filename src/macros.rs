@@ -11,69 +11,18 @@
 
 #[doc(hidden)]
 #[macro_export]
-macro_rules! __compute_formula_scalarlist {
+macro_rules! __compute_formula_constraint {
     // Unbracket a statement
-    (($publics:ident, $scalars:ident) ($($x:tt)*)) => {
+    (($public_vars:ident, $secret_vars:ident) ($($x:tt)*)) => {
         // Add a trailing +
-        __compute_formula_scalarlist!(($publics,$scalars) $($x)* +)
+        __compute_formula_constraint!(($public_vars,$secret_vars) $($x)* +)
     };
     // Inner part of the formula: give a list of &Scalars
     // Since there's a trailing +, we can just generate the list as normal...
-    (($publics:ident, $scalars:ident)
+    (($public_vars:ident, $secret_vars:ident)
      $( $point:ident * $scalar:ident +)+ ) => {
-        &[ $( $scalars.$scalar ,)* ]
+        vec![ $( ($secret_vars.$scalar , $public_vars.$point) )* ]
     };
-}
-
-#[doc(hidden)]
-#[macro_export]
-macro_rules! __compute_formula_pointlist {
-    // Unbracket a statement
-    (($publics:ident, $scalars:ident) ($($x:tt)*)) => {
-        // Add a trailing +
-        __compute_formula_pointlist!(($publics,$scalars) $($x)* +)
-    };
-    // Inner part of the formula: give a list of &Scalars
-    // Since there's a trailing +, we can just generate the list as normal...
-    (($publics:ident, $scalars:ident)
-     $( $point:ident * $scalar:ident +)* ) => {
-        &[ $( *($publics.$point) ,)* ]
-    };
-}
-
-#[doc(hidden)]
-#[macro_export]
-macro_rules! __compute_commitments_consttime {
-    (($publics:ident, $scalars:ident) $($lhs:ident = $statement:tt),+) => {
-        Commitments {
-            $( $lhs :
-               RistrettoPoint::multiscalar_mul(
-                   __compute_formula_scalarlist!(($publics, $scalars) $statement),
-                   __compute_formula_pointlist!(($publics, $scalars) $statement),
-               )
-            ),+
-        }
-    }
-}
-
-#[doc(hidden)]
-#[macro_export]
-macro_rules! __recompute_commitments_vartime {
-    (($publics:ident, $scalars:ident, $minus_c:ident) $($lhs:ident = $statement:tt),+) => {
-        Commitments {
-            $( $lhs :
-               RistrettoPoint::vartime_multiscalar_mul(
-                   __compute_formula_scalarlist!(($publics, $scalars) $statement)
-                       .into_iter()
-                       .chain(iter::once(&($minus_c)))
-                   ,
-                   __compute_formula_pointlist!(($publics, $scalars) $statement)
-                       .into_iter()
-                       .chain(iter::once($publics.$lhs))
-               )
-            ),+
-        }
-    }
 }
 
 /// Creates a module with code required to produce a non-interactive
@@ -156,56 +105,7 @@ macro_rules! __recompute_commitments_vartime {
 ///
 /// As an example, we can create and verify a DLEQ proof as follows:
 ///
-/// ```
-/// #[macro_use]
-/// extern crate serde_derive;
-///
-/// #[macro_use]
-/// extern crate zkp;
-/// use zkp::Transcript;
-///
-/// extern crate curve25519_dalek;
-/// use curve25519_dalek::constants as dalek_constants;
-/// use curve25519_dalek::ristretto::RistrettoPoint;
-/// use curve25519_dalek::scalar::Scalar;
-///
-/// extern crate sha2;
-/// use sha2::Sha512;
-///
-/// extern crate bincode;
-///
-/// // ...
-///
-/// # fn main() {
-/// let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
-/// let H = RistrettoPoint::hash_from_bytes::<Sha512>(G.compress().as_bytes());
-///
-/// create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
-///
-/// let x = Scalar::from(89327492234u64);
-/// let A =  G * &x;
-/// let B = &H * &x;
-///
-/// let publics = dleq::Publics{A: &A, B: &B, G: G, H: &H};
-/// let secrets = dleq::Secrets{x: &x};
-///
-/// let mut transcript = Transcript::new(b"DLEQExample");
-/// let proof = dleq::Proof::create(&mut transcript, publics, secrets);
-///
-/// // Serialize to bincode representation
-/// let proof_bytes = bincode::serialize(&proof).unwrap();
-///
-/// // Send bytes over the wire here ...
-///
-/// // Parse bytes back to in-memory representation
-/// let parsed_proof: dleq::Proof
-///     = bincode::deserialize(&proof_bytes).unwrap();
-///
-/// // Check the proof with a fresh transcript.
-/// let mut transcript = Transcript::new(b"DLEQExample");
-/// assert!(parsed_proof.verify(&mut transcript, publics).is_ok());
-/// # }
-/// ```
+/// XXX readd example once API is finished.
 #[macro_export]
 macro_rules! create_nipk {
     (
@@ -213,236 +113,202 @@ macro_rules! create_nipk {
         ,
         ( $($secret:ident),+ ) // Secret variables, sep by commas
         ,
-        ( $($public:ident),+ ) // Public variables, sep by commas
+        ( $($public:ident),+ ) // Public instance variables, separated by commas
+        //,
+        //( $($static:ident),+ ) // Public static variables, separated by commas
         :
         // List of statements to prove
         // Format: LHS = ( ... RHS expr ... ),
         $($lhs:ident = $statement:tt),+
     ) => {
+        /// An auto-generated Schnorr proof implementation.
         pub mod $proof_module_name {
             use $crate::curve25519_dalek::scalar::Scalar;
             use $crate::curve25519_dalek::ristretto::RistrettoPoint;
             use $crate::curve25519_dalek::traits::{MultiscalarMul, VartimeMultiscalarMul};
-            use $crate::merlin::Transcript;
             use $crate::rand::thread_rng;
 
-            use std::iter;
+            pub use $crate::merlin::Transcript;
 
+            use $crate::prover::Prover;
+            use $crate::verifier::Verifier;
+
+            pub use $crate::{CompactProof, BatchableProof};
+
+            /// The generated [`internal`] module contains lower-level
+            /// functions at the level of the Schnorr constraint
+            /// system API.
+            pub mod internal {
+                use $crate::SchnorrCS;
+
+                /// The proof label committed to the transcript as a domain separator.
+                pub const PROOF_LABEL: &'static str = stringify!($proof_module_name);
+
+                /// A container type that holds labels for secret variables.
+                pub struct SecretVarLabels {
+                    $( pub $secret: &'static str, )+
+                }
+
+                /// The transcript labels used for each secret variable.
+                pub const SECRET_VAR_LABELS: SecretVarLabels = SecretVarLabels {
+                    $( $secret: stringify!($secret), )+
+                };
+
+                /// A container type that holds labels for public variables.
+                pub struct PublicVarLabels {
+                    $( pub $public: &'static str, )+
+                }
+
+                /// The transcript labels used for each public variable.
+                pub const PUBLIC_VAR_LABELS: PublicVarLabels = PublicVarLabels {
+                    $( $public: stringify!($public), )+
+                };
+
+                /// A container type that simulates named parameters for [`proof_statement`].
+                #[derive(Copy, Clone)]
+                pub struct SecretVars<CS: SchnorrCS> {
+                    $( pub $secret: CS::ScalarVar, )+
+                }
+
+                /// A container type that simulates named parameters for [`proof_statement`].
+                #[derive(Copy, Clone)]
+                pub struct PublicVars<CS: SchnorrCS> {
+                    $( pub $public: CS::PointVar, )+
+                }
+
+                /// The underlying proof statement generated by the macro invocation.
+                ///
+                /// This function exists separately from the proving
+                /// and verification functions to allow composition of
+                /// different proof statements with common variable
+                /// assignments.
+                pub fn proof_statement<CS: SchnorrCS>(
+                    cs: &mut CS,
+                    secrets: SecretVars<CS>,
+                    publics: PublicVars<CS>,
+                ) {
+
+                    $(
+                        cs.constrain(
+                            publics.$lhs,
+                            __compute_formula_constraint!( (publics, secrets) $statement ),
+                        );
+                    )+
+                }
+            }
+
+            /// A container type that simulates passing secret variable assignments as named parameters.
             #[derive(Copy, Clone)]
-            pub struct Secrets<'a> {
-                // Create a parameter for each secret value
-                $(
-                    pub $secret : &'a Scalar,
-                )+
-            }
+            pub struct SecretAssignments<'a> {$(pub $secret : &'a Scalar,)+}
 
+            /// A container type that simulates passing public variable assignments as named parameters.
             #[derive(Copy, Clone)]
-            pub struct Publics<'a> {
-                // Create a parameter for each public value
-                $(
-                    pub $public : &'a RistrettoPoint,
-                )+
+            pub struct PublicAssignments<'a> {$(pub $public : &'a RistrettoPoint,)+}
+
+            fn build_prover<'a>(
+                transcript: &'a mut Transcript,
+                secret_assignments: SecretAssignments,
+                public_assignments: PublicAssignments,
+            ) -> Prover<'a> {
+                use self::internal::*;
+                use $crate::prover::*;
+
+                let mut prover = Prover::new(
+                    PROOF_LABEL.as_bytes(),
+                    transcript
+                );
+
+                let secret_vars = SecretVars {
+                    $(
+                    $secret: prover.allocate_scalar(SECRET_VAR_LABELS.$secret.as_bytes(), *secret_assignments.$secret),
+                    )+
+                };
+
+                // XXX return compressed points
+                let public_vars = PublicVars {
+                    $(
+                    $public: prover.allocate_point(PUBLIC_VAR_LABELS.$public.as_bytes(), *public_assignments.$public).0,
+                    )+
+                };
+
+                proof_statement(&mut prover, secret_vars, public_vars);
+
+                prover
             }
 
-            // Hack because we can't concat identifiers,
-            // so do responses.x instead of responses_x
-            // rand.x instead of rand_x, etc.
+            /// Given a transcript and assignments to secret and public variables, produce a proof in compact format.
+            pub fn prove_compact(
+                transcript: &mut Transcript,
+                secret_assignments: SecretAssignments,
+                public_assignments: PublicAssignments,
+            ) -> CompactProof {
+                let prover = build_prover(transcript, secret_assignments, public_assignments);
 
-            struct Commitments {$($lhs: RistrettoPoint,)+ }
-            struct Randomnesses {$($secret : Scalar,)+}
-            #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-            struct Responses {$($secret : Scalar,)+}
-
-            #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-            pub struct Proof {
-                challenge: Scalar,
-                responses: Responses,
+                prover.prove_compact()
             }
 
-            impl Proof {
-                /// Create a `Proof` from the given `Publics` and `Secrets`.
-                #[allow(dead_code)]
-                pub fn create(
-                    transcript: &mut Transcript,
-                    publics: Publics,
-                    secrets: Secrets,
-                ) -> Proof {
-                    // Commit public data to the transcript.
-                    transcript.commit_bytes(b"domain-sep", stringify!($proof_module_name).as_bytes());
-                    $(
-                        transcript.commit_bytes(
-                            stringify!($public).as_bytes(),
-                            publics.$public.compress().as_bytes(),
-                        );
-                    )+
+            /// Given a transcript and assignments to secret and public variables, produce a proof in batchable format.
+            pub fn prove_batchable(
+                transcript: &mut Transcript,
+                secret_assignments: SecretAssignments,
+                public_assignments: PublicAssignments,
+            ) -> CompactProof {
+                let prover = build_prover(transcript, secret_assignments, public_assignments);
 
-                    // Construct a TranscriptRng
-                    let rng_builder = transcript.build_rng();
-                    $(
-                        let rng_builder = rng_builder.commit_witness_bytes(
-                            stringify!($secret).as_bytes(),
-                            secrets.$secret.as_bytes(),
-                        );
-                    )+
-                    let mut transcript_rng = rng_builder.finalize(&mut thread_rng());
-
-                    // Use the TranscriptRng to generate blinding factors
-                    let rand = Randomnesses{
-                        $(
-                            $secret : Scalar::random(&mut transcript_rng),
-                        )+
-                    };
-
-                    // Form a commitment to the blinding factors for each statement LHS
-                    //
-                    // $statement_rhs = `X * x + Y * y + Z * z`
-                    // should become
-                    // `publics.X * rand.x + publics.Y * rand.y + publics.Z * rand.z`
-                    let commitments = __compute_commitments_consttime!(
-                        (publics, rand) $($lhs = $statement),*
-                    );
-
-                    // Add all commitments to the transcript
-                    $(
-                        transcript.commit_bytes(
-                            stringify!(com $lhs).as_bytes(),
-                            commitments.$lhs.compress().as_bytes(),
-                        );
-                    )+
-
-                    // Obtain a scalar challenge
-                    let challenge = {
-                        let mut bytes = [0; 64];
-                        transcript.challenge_bytes(b"chal", &mut bytes);
-                        Scalar::from_bytes_mod_order_wide(&bytes)
-                    };
-
-                    let responses = Responses{
-                        $(
-                            $secret : &(&challenge * secrets.$secret) + &rand.$secret,
-                        )+
-                    };
-
-                    Proof{ challenge: challenge, responses: responses }
-                }
-
-                /// Verify the `Proof` using the public parameters `Publics`.
-                #[allow(dead_code)]
-                pub fn verify(
-                    &self,
-                    transcript: &mut Transcript,
-                    publics: Publics,
-                ) -> Result<(),()> {
-                    // Recompute the prover's commitments based on their claimed challenge value:
-                    // `A = X * x + Y * y`
-                    // should become
-                    // `publics.X * responses.x + publics.Y * responses.y - publics.A * self.challenge`
-                    let responses = &self.responses;
-                    let minus_c = -&self.challenge;
-                    let commitments = __recompute_commitments_vartime!(
-                        (publics, responses, minus_c) $($lhs = $statement),*
-                    );
-
-                    // Commit public data to the transcript.
-                    transcript.commit_bytes(b"domain-sep", stringify!($proof_module_name).as_bytes());
-                    $(
-                        transcript.commit_bytes(
-                            stringify!($public).as_bytes(),
-                            publics.$public.compress().as_bytes(),
-                        );
-                    )+
-
-                    // Commit the recomputed commitments to the transcript.
-                    $(
-                        transcript.commit_bytes(
-                            stringify!(com $lhs).as_bytes(),
-                            commitments.$lhs.compress().as_bytes(),
-                        );
-                    )+
-
-                    // Recompute challenge
-                    let challenge = {
-                        let mut bytes = [0; 64];
-                        transcript.challenge_bytes(b"chal", &mut bytes);
-                        Scalar::from_bytes_mod_order_wide(&bytes)
-                    };
-
-                    if challenge == self.challenge { Ok(()) } else { Err(()) }
-                }
+                prover.prove_compact()
             }
 
-            #[cfg(all(feature = "bench", test))]
-            mod bench {
-                extern crate test;
+            fn build_verifier<'a>(
+                transcript: &'a mut Transcript,
+                public_assignments: PublicAssignments,
+            ) -> Verifier<'a> {
+                use self::internal::*;
+                use $crate::verifier::*;
 
-                use $crate::rand::OsRng;
+                let mut verifier = Verifier::new(PROOF_LABEL.as_bytes(), transcript);
 
-                use super::*;
+                // Hack because we can't concatenate identifiers,
+                // so we can't just expand to let var_$secret = ...
+                //struct OwnedSecretVars { $($secret: ScalarVar,)+ }
+                //struct OwnedPublicVars { $($public: PointVar,)+ }
 
-                use self::test::Bencher;
+                let secret_vars = SecretVars {
+                    $(
+                    $secret: verifier.allocate_scalar(SECRET_VAR_LABELS.$secret.as_bytes()),
+                    )+
+                };
 
-                #[bench]
-                #[allow(dead_code)]
-                fn create(b: &mut Bencher) {
-                    let mut csprng = OsRng::new().unwrap();
+                let public_vars = PublicVars {
+                    $(
+                    $public: verifier.allocate_point(PUBLIC_VAR_LABELS.$public.as_bytes(), public_assignments.$public.compress()),
+                    )+
+                };
 
-                    // Need somewhere to actually put the public points
-                    struct DummyPublics { $( pub $public : RistrettoPoint, )+ }
-                    let dummy_publics = DummyPublics {
-                        $( $public : RistrettoPoint::random(&mut csprng) , )+
-                    };
+                proof_statement(&mut verifier, secret_vars, public_vars);
 
-                    let publics = Publics {
-                        $( $public : &dummy_publics.$public , )+
-                    };
+                verifier
+            }
 
-                    struct DummySecrets { $( pub $secret : Scalar, )+ }
-                    let dummy_secrets = DummySecrets {
-                        $( $secret : Scalar::random(&mut csprng) , )+
-                    };
+            /// Given a transcript and assignments to public variables, verify a proof in compact format.
+            pub fn verify_compact(
+                transcript: &mut Transcript,
+                public_assignments: PublicAssignments,
+                proof: &CompactProof,
+            ) -> Result<(), ()> {
+                let verifier = build_verifier(transcript, public_assignments);
 
-                    let secrets = Secrets {
-                        $( $secret : &dummy_secrets.$secret , )+
-                    };
+                verifier.verify_compact(proof)
+            }
 
-                    b.iter(|| {
-                        let mut transcript = Transcript::new(b"BenchmarkProve");
-                        Proof::create(&mut transcript, publics, secrets)
-                    });
-                }
+            /// Given a transcript and assignments to public variables, verify a proof in batchable format.
+            pub fn verify_batchable(
+                transcript: &mut Transcript,
+                public_assignments: PublicAssignments,
+                proof: &BatchableProof,
+            ) -> Result<(), ()> {
+                let verifier = build_verifier(transcript, public_assignments);
 
-                #[bench]
-                #[allow(dead_code)]
-                fn verify(b: &mut Bencher) {
-                    let mut csprng = OsRng::new().unwrap();
-
-                    // Need somewhere to actually put the public points
-                    struct DummyPublics { $( pub $public : RistrettoPoint, )+ }
-                    let dummy_publics = DummyPublics {
-                        $( $public : RistrettoPoint::random(&mut csprng) , )+
-                    };
-
-                    let publics = Publics {
-                        $( $public : &dummy_publics.$public , )+
-                    };
-
-                    struct DummySecrets { $( pub $secret : Scalar, )+ }
-                    let dummy_secrets = DummySecrets {
-                        $( $secret : Scalar::random(&mut csprng) , )+
-                    };
-
-                    let secrets = Secrets {
-                        $( $secret : &dummy_secrets.$secret , )+
-                    };
-
-                    let mut transcript = Transcript::new(b"BenchmarkVerify");
-                    let p = Proof::create(&mut transcript, publics, secrets);
-
-                    b.iter(|| {
-                        let mut transcript = Transcript::new(b"BenchmarkVerify");
-                        p.verify(&mut transcript, publics).is_ok()
-                    });
-                }
+                verifier.verify_batchable(proof)
             }
         }
     }

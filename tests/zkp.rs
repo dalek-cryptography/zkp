@@ -32,27 +32,39 @@ fn create_and_verify_gen_dleq() {
     let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
     let H = RistrettoPoint::hash_from_bytes::<Sha512>(G.compress().as_bytes());
 
-    create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
+    create_nipk! {dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
 
     let x = Scalar::from(89327492234u64);
     let A = G * &x;
     let B = &H * &x;
 
-    let publics = dleq::Publics {
-        A: &A,
-        B: &B,
-        G: G,
-        H: &H,
-    };
-    let secrets = dleq::Secrets { x: &x };
-
     let mut transcript = Transcript::new(b"DLEQTest");
-    let proof = dleq::Proof::create(&mut transcript, publics, secrets);
+    let proof = dleq::prove_compact(
+        &mut transcript,
+        dleq::SecretAssignments { x: &x },
+        dleq::PublicAssignments {
+            A: &A,
+            B: &B,
+            G: G,
+            H: &H,
+        },
+    );
+
     // serialize to bincode representation
     let proof_bytes = bincode::serialize(&proof).unwrap();
     // parse bytes back to memory
-    let parsed_proof: dleq::Proof = bincode::deserialize(&proof_bytes).unwrap();
+    let parsed_proof: dleq::CompactProof = bincode::deserialize(&proof_bytes).unwrap();
 
     let mut transcript = Transcript::new(b"DLEQTest");
-    assert!(parsed_proof.verify(&mut transcript, publics).is_ok());
+    assert!(dleq::verify_compact(
+        &mut transcript,
+        dleq::PublicAssignments {
+            A: &A,
+            B: &B,
+            G: G,
+            H: &H,
+        },
+        &parsed_proof,
+    )
+    .is_ok());
 }

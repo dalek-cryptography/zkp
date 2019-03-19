@@ -33,7 +33,7 @@ use zkp::Transcript;
 
 mod cmz13 {
     // Proof statement for "credential presentation with 10 hidden attributes" from CMZ'13.
-    create_nipk!{
+    create_nipk! {
         cred_show_10,
         (m_1, m_2, m_3, m_4, m_5, m_6, m_7, m_8, m_9, m_10,
          z_1, z_2, z_3, z_4, z_5, z_6, z_7, z_8, z_9, z_10, minus_z_Q),
@@ -56,7 +56,7 @@ fn create_gen_dleq(b: &mut Bencher) {
     let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
     let H = RistrettoPoint::hash_from_bytes::<Sha512>(G.compress().as_bytes());
 
-    create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
+    create_nipk! {dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
 
     let x = Scalar::from(89327492234u64);
     let A = G * &x;
@@ -81,7 +81,7 @@ fn verify_gen_dleq(b: &mut Bencher) {
     let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
     let H = RistrettoPoint::hash_from_bytes::<Sha512>(G.compress().as_bytes());
 
-    create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
+    create_nipk! {dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
 
     let x = Scalar::from(89327492234u64);
     let A = G * &x;

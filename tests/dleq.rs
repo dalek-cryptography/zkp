@@ -25,8 +25,8 @@ use curve25519_dalek::constants as dalek_constants;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 
-use zkp::Transcript;
-use zkp::{BatchVerifier, CompactProof, Prover, SchnorrCS, Verifier};
+use zkp::{batch_verifier::BatchVerifier, prover::Prover, verifier::Verifier};
+use zkp::{SchnorrCS, Transcript};
 
 fn dleq_statement<CS: SchnorrCS>(
     cs: &mut CS,

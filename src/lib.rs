@@ -37,18 +37,19 @@ pub extern crate rand;
 
 pub use merlin::Transcript;
 
-mod batch_verifier;
 mod constraints;
 mod proofs;
-mod prover;
-mod verifier;
 mod util;
 
-pub use batch_verifier::*;
 pub use constraints::*;
 pub use proofs::*;
-pub use prover::*;
-pub use verifier::*;
 
+pub mod batch_verifier;
+pub mod prover;
+pub mod verifier;
+
+#[macro_use]
 mod macros;
 pub use macros::*;
+
+create_nipk! {dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
