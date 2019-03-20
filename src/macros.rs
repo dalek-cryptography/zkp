@@ -187,7 +187,6 @@ macro_rules! create_nipk {
                     secrets: SecretVars<CS>,
                     publics: PublicVars<CS>,
                 ) {
-
                     $(
                         cs.constrain(
                             publics.$lhs,
@@ -213,22 +212,15 @@ macro_rules! create_nipk {
                 use self::internal::*;
                 use $crate::prover::*;
 
-                let mut prover = Prover::new(
-                    PROOF_LABEL.as_bytes(),
-                    transcript
-                );
+                let mut prover = Prover::new(PROOF_LABEL.as_bytes(), transcript);
 
                 let secret_vars = SecretVars {
-                    $(
-                    $secret: prover.allocate_scalar(SECRET_VAR_LABELS.$secret.as_bytes(), *secret_assignments.$secret),
-                    )+
+                    $($secret: prover.allocate_scalar(SECRET_VAR_LABELS.$secret.as_bytes(), *secret_assignments.$secret),)+
                 };
 
                 // XXX return compressed points
                 let public_vars = PublicVars {
-                    $(
-                    $public: prover.allocate_point(PUBLIC_VAR_LABELS.$public.as_bytes(), *public_assignments.$public).0,
-                    )+
+                    $($public: prover.allocate_point(PUBLIC_VAR_LABELS.$public.as_bytes(), *public_assignments.$public).0,)+
                 };
 
                 proof_statement(&mut prover, secret_vars, public_vars);
@@ -267,21 +259,13 @@ macro_rules! create_nipk {
 
                 let mut verifier = Verifier::new(PROOF_LABEL.as_bytes(), transcript);
 
-                // Hack because we can't concatenate identifiers,
-                // so we can't just expand to let var_$secret = ...
-                //struct OwnedSecretVars { $($secret: ScalarVar,)+ }
-                //struct OwnedPublicVars { $($public: PointVar,)+ }
-
                 let secret_vars = SecretVars {
-                    $(
-                    $secret: verifier.allocate_scalar(SECRET_VAR_LABELS.$secret.as_bytes()),
-                    )+
+                    $($secret: verifier.allocate_scalar(SECRET_VAR_LABELS.$secret.as_bytes()),)+
                 };
 
+                // XXX take compressed points
                 let public_vars = PublicVars {
-                    $(
-                    $public: verifier.allocate_point(PUBLIC_VAR_LABELS.$public.as_bytes(), public_assignments.$public.compress()),
-                    )+
+                    $($public: verifier.allocate_point(PUBLIC_VAR_LABELS.$public.as_bytes(), public_assignments.$public.compress()),)+
                 };
 
                 proof_statement(&mut verifier, secret_vars, public_vars);
