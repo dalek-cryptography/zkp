@@ -52,4 +52,4 @@ pub mod verifier;
 mod macros;
 pub use macros::*;
 
-create_nipk! {dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
+create_nipk! {dleq, (x), (A, B), (G, H) : A = (G * x), B = (H * x) }
