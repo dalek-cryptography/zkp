@@ -144,23 +144,15 @@ macro_rules! create_nipk {
                 /// The proof label committed to the transcript as a domain separator.
                 pub const PROOF_LABEL: &'static str = stringify!($proof_module_name);
 
-                /// A container type that holds labels for secret variables.
-                pub struct SecretVarLabels {
+                /// A container type that holds transcript labels for secret variables.
+                pub struct TranscriptLabels {
                     $( pub $secret: &'static str, )+
-                }
-
-                /// The transcript labels used for each secret variable.
-                pub const SECRET_VAR_LABELS: SecretVarLabels = SecretVarLabels {
-                    $( $secret: stringify!($secret), )+
-                };
-
-                /// A container type that holds labels for public variables.
-                pub struct PublicVarLabels {
                     $( pub $public: &'static str, )+
                 }
 
-                /// The transcript labels used for each public variable.
-                pub const PUBLIC_VAR_LABELS: PublicVarLabels = PublicVarLabels {
+                /// The transcript labels used for each secret variable.
+                pub const TRANSCRIPT_LABELS: TranscriptLabels = TranscriptLabels {
+                    $( $secret: stringify!($secret), )+
                     $( $public: stringify!($public), )+
                 };
 
@@ -215,12 +207,12 @@ macro_rules! create_nipk {
                 let mut prover = Prover::new(PROOF_LABEL.as_bytes(), transcript);
 
                 let secret_vars = SecretVars {
-                    $($secret: prover.allocate_scalar(SECRET_VAR_LABELS.$secret.as_bytes(), *secret_assignments.$secret),)+
+                    $($secret: prover.allocate_scalar(TRANSCRIPT_LABELS.$secret.as_bytes(), *secret_assignments.$secret),)+
                 };
 
                 // XXX return compressed points
                 let public_vars = PublicVars {
-                    $($public: prover.allocate_point(PUBLIC_VAR_LABELS.$public.as_bytes(), *public_assignments.$public).0,)+
+                    $($public: prover.allocate_point(TRANSCRIPT_LABELS.$public.as_bytes(), *public_assignments.$public).0,)+
                 };
 
                 proof_statement(&mut prover, secret_vars, public_vars);
@@ -260,12 +252,12 @@ macro_rules! create_nipk {
                 let mut verifier = Verifier::new(PROOF_LABEL.as_bytes(), transcript);
 
                 let secret_vars = SecretVars {
-                    $($secret: verifier.allocate_scalar(SECRET_VAR_LABELS.$secret.as_bytes()),)+
+                    $($secret: verifier.allocate_scalar(TRANSCRIPT_LABELS.$secret.as_bytes()),)+
                 };
 
                 // XXX take compressed points
                 let public_vars = PublicVars {
-                    $($public: verifier.allocate_point(PUBLIC_VAR_LABELS.$public.as_bytes(), public_assignments.$public.compress()),)+
+                    $($public: verifier.allocate_point(TRANSCRIPT_LABELS.$public.as_bytes(), public_assignments.$public.compress()),)+
                 };
 
                 proof_statement(&mut verifier, secret_vars, public_vars);
