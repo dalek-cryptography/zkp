@@ -32,9 +32,9 @@ fn create_and_verify_gen_dleq() {
     let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
     let H = RistrettoPoint::hash_from_bytes::<Sha512>(G.compress().as_bytes());
 
-    create_nipk! {dleq, (x), (A, B), (G, H) : A = (G * x), B = (H * x) }
+    create_nipk! {dleq, (x), (A, B, H), (G) : A = (x * G), B = (x * H) }
 
-    let basepoints = dleq::StaticAssignments { G: G, H: &H };
+    let basepoint = dleq::CommonAssignments { G };
 
     let x = Scalar::from(89327492234u64);
     let A = G * &x;
@@ -44,8 +44,8 @@ fn create_and_verify_gen_dleq() {
     let proof = dleq::prove_compact(
         &mut transcript,
         dleq::SecretAssignments { x: &x },
-        dleq::InstanceAssignments { A: &A, B: &B },
-        basepoints,
+        dleq::InstanceAssignments { A: &A, B: &B, H: &H },
+        basepoint,
     );
 
     // serialize to bincode representation
@@ -57,8 +57,8 @@ fn create_and_verify_gen_dleq() {
     assert!(dleq::verify_compact(
         &parsed_proof,
         &mut transcript,
-        dleq::InstanceAssignments { A: &A, B: &B },
-        basepoints,
+        dleq::InstanceAssignments { A: &A, B: &B, H: &H },
+        basepoint,
     )
     .is_ok());
 }
