@@ -32,7 +32,7 @@ fn create_and_verify_gen_dleq() {
     let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
     let H = RistrettoPoint::hash_from_bytes::<Sha512>(G.compress().as_bytes());
 
-    create_nipk! {dleq, (x), (A, B, H), (G) : A = (x * G), B = (x * H) }
+    define_proof! {dleq, (x), (A, B, H), (G) : A = (x * G), B = (x * H) }
 
     let basepoint = dleq::CommonAssignments { G };
 

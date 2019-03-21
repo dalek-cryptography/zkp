@@ -34,7 +34,7 @@ macro_rules! __compute_formula_constraint {
 /// two equal discrete logarithms ("DLEQ") is specified as:
 ///
 /// ```rust,ignore
-/// create_nipk!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
+/// define_proof!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
 /// ```
 ///
 /// This creates a module `dleq` with code for proving knowledge of a
@@ -42,7 +42,7 @@ macro_rules! __compute_formula_constraint {
 /// parameters `A, B, G, H: RistrettoPoint`.  In general the syntax is
 ///
 /// ```rust,ignore
-/// create_nipk!{
+/// define_proof!{
 ///     module_name, // used to label proof statements
 ///     (x,y,z,...), // secret variable names
 ///     (A,B,C,...)  // public parameter names
@@ -107,7 +107,7 @@ macro_rules! __compute_formula_constraint {
 ///
 /// XXX readd example once API is finished.
 #[macro_export]
-macro_rules! create_nipk {
+macro_rules! define_proof {
     (
         $proof_module_name:ident // Name of the module to create
         ,
