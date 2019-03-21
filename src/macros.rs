@@ -125,6 +125,7 @@ macro_rules! define_proof {
         pub mod $proof_module_name {
             use $crate::curve25519_dalek::scalar::Scalar;
             use $crate::curve25519_dalek::ristretto::RistrettoPoint;
+            use $crate::curve25519_dalek::ristretto::CompressedRistretto;
             use $crate::curve25519_dalek::traits::{MultiscalarMul, VartimeMultiscalarMul};
             use $crate::rand::thread_rng;
 
@@ -191,15 +192,26 @@ macro_rules! define_proof {
                 }
             }
 
-            /// A container type that simulates passing secret variable assignments as named parameters.
+            /// Named parameters for secret variable assignments.
             #[derive(Copy, Clone)]
-            pub struct SecretAssignments<'a> {$(pub $secret_var : &'a Scalar,)+}
+            pub struct SecretAssignments<'a> {$(pub $secret_var: &'a Scalar,)+}
 
-            /// A container type that simulates passing instance variable assignments as named parameters.
+            /// Named parameters for instance variable assignments.
             #[derive(Copy, Clone)]
-            pub struct InstanceAssignments<'a> {$(pub $instance_var : &'a RistrettoPoint,)+}
+            pub struct InstanceAssignments<'a> {$(pub $instance_var: &'a RistrettoPoint,)+}
 
-            /// A container type that simulates passing common variable assignments as named parameters.
+            /// Named parameters for instance variable assignments, as compressed points.
+            ///
+            /// Note that this struct owns its assignments, so that it
+            /// can be used for returning data to the caller.
+            #[derive(Copy, Clone)]
+            pub struct CompressedInstanceAssignments {$(pub $instance_var: CompressedRistretto,)+}
+
+            /// Named parameters for batch verification.
+            #[derive(Clone)]
+            pub struct BatchInstanceAssignments {$(pub $instance_var: Vec<CompressedRistretto>,)+}
+
+            /// Named parameters for common variable assignments.
             #[derive(Copy, Clone)]
             pub struct CommonAssignments<'a> {$(pub $common_var : &'a RistrettoPoint,)+}
 
@@ -208,7 +220,7 @@ macro_rules! define_proof {
                 secret_assignments: SecretAssignments,
                 instance_assignments: InstanceAssignments,
                 common_assignments: CommonAssignments,
-            ) -> Prover<'a> {
+            ) -> (Prover<'a>, CompressedInstanceAssignments) {
                 use self::internal::*;
                 use $crate::prover::*;
 
@@ -218,15 +230,25 @@ macro_rules! define_proof {
                     $($secret_var: prover.allocate_scalar(TRANSCRIPT_LABELS.$secret_var.as_bytes(), *secret_assignments.$secret_var),)+
                 };
 
+                struct VarPointPairs { $( pub $instance_var: (PointVar, CompressedRistretto), )+ }
+
+                let pairs = VarPointPairs {
+                    $($instance_var: prover.allocate_point(TRANSCRIPT_LABELS.$instance_var.as_bytes(), *instance_assignments.$instance_var), )+
+                };
+
                 // XXX return compressed points
                 let public_vars = PublicVars {
-                    $($instance_var: prover.allocate_point(TRANSCRIPT_LABELS.$instance_var.as_bytes(), *instance_assignments.$instance_var).0,)+
+                    $($instance_var: pairs.$instance_var.0,)+
                     $($common_var: prover.allocate_point(TRANSCRIPT_LABELS.$common_var.as_bytes(), *common_assignments.$common_var).0,)+
+                };
+
+                let compressed = CompressedInstanceAssignments {
+                    $($instance_var: pairs.$instance_var.1,)+
                 };
 
                 proof_statement(&mut prover, secret_vars, public_vars);
 
-                prover
+                (prover, compressed)
             }
 
             /// Given a transcript and assignments to secret and public variables, produce a proof in compact format.
@@ -235,10 +257,10 @@ macro_rules! define_proof {
                 secret_assignments: SecretAssignments,
                 instance_assignments: InstanceAssignments,
                 common_assignments: CommonAssignments,
-            ) -> CompactProof {
-                let prover = build_prover(transcript, secret_assignments, instance_assignments, common_assignments);
+            ) -> (CompactProof, CompressedInstanceAssignments) {
+                let (prover, compressed) = build_prover(transcript, secret_assignments, instance_assignments, common_assignments);
 
-                prover.prove_compact()
+                (prover.prove_compact(), compressed)
             }
 
             /// Given a transcript and assignments to secret and public variables, produce a proof in batchable format.
@@ -247,15 +269,15 @@ macro_rules! define_proof {
                 secret_assignments: SecretAssignments,
                 instance_assignments: InstanceAssignments,
                 common_assignments: CommonAssignments,
-            ) -> CompactProof {
-                let prover = build_prover(transcript, secret_assignments, instance_assignments, common_assignments);
+            ) -> (BatchableProof, CompressedInstanceAssignments) {
+                let (prover, compressed) = build_prover(transcript, secret_assignments, instance_assignments, common_assignments);
 
-                prover.prove_compact()
+                (prover.prove_batchable(), compressed)
             }
 
             fn build_verifier<'a>(
                 transcript: &'a mut Transcript,
-                instance_assignments: InstanceAssignments,
+                instance_assignments: CompressedInstanceAssignments,
                 common_assignments: CommonAssignments,
             ) -> Verifier<'a> {
                 use self::internal::*;
@@ -267,10 +289,19 @@ macro_rules! define_proof {
                     $($secret_var: verifier.allocate_scalar(TRANSCRIPT_LABELS.$secret_var.as_bytes()),)+
                 };
 
-                // XXX take compressed points
                 let public_vars = PublicVars {
-                    $($instance_var: verifier.allocate_point(TRANSCRIPT_LABELS.$instance_var.as_bytes(), instance_assignments.$instance_var.compress()),)+
-                    $($common_var: verifier.allocate_point(TRANSCRIPT_LABELS.$common_var.as_bytes(), common_assignments.$common_var.compress()),)+
+                    $(
+                        $instance_var: verifier.allocate_point(
+                            TRANSCRIPT_LABELS.$instance_var.as_bytes(),
+                            instance_assignments.$instance_var,
+                        ),
+                    )+
+                    $(
+                        $common_var: verifier.allocate_point(
+                            TRANSCRIPT_LABELS.$common_var.as_bytes(),
+                            // XXX avoid compression here too?
+                            common_assignments.$common_var.compress()),
+                    )+
                 };
 
                 proof_statement(&mut verifier, secret_vars, public_vars);
@@ -282,7 +313,7 @@ macro_rules! define_proof {
             pub fn verify_compact(
                 proof: &CompactProof,
                 transcript: &mut Transcript,
-                instance_assignments: InstanceAssignments,
+                instance_assignments: CompressedInstanceAssignments,
                 common_assignments: CommonAssignments,
             ) -> Result<(), ()> {
                 let verifier = build_verifier(transcript, instance_assignments, common_assignments);
@@ -294,12 +325,51 @@ macro_rules! define_proof {
             pub fn verify_batchable(
                 proof: &BatchableProof,
                 transcript: &mut Transcript,
-                instance_assignments: InstanceAssignments,
+                instance_assignments: CompressedInstanceAssignments,
                 common_assignments: CommonAssignments,
             ) -> Result<(), ()> {
                 let verifier = build_verifier(transcript, instance_assignments, common_assignments);
 
                 verifier.verify_batchable(proof)
+            }
+
+            /// Verify a batch of proofs, given a batch of transcripts and a batch of assignments.
+            pub fn batch_verify(
+                proofs: &[BatchableProof],
+                transcripts: Vec<&mut Transcript>,
+                instance_assignments: BatchInstanceAssignments,
+                common_assignments: CommonAssignments,
+            ) -> Result<(), ()> {
+                use self::internal::*;
+                use $crate::batch_verifier::*;
+
+                let batch_size = proofs.len();
+
+                let mut verifier = BatchVerifier::new(PROOF_LABEL.as_bytes(), batch_size, transcripts).map_err(|_| ())?;
+
+                let secret_vars = SecretVars {
+                    $($secret_var: verifier.allocate_scalar(TRANSCRIPT_LABELS.$secret_var.as_bytes()),)+
+                };
+
+                let public_vars = PublicVars {
+                    $(
+                        $instance_var: verifier.allocate_instance_point(
+                            TRANSCRIPT_LABELS.$instance_var.as_bytes(),
+                            instance_assignments.$instance_var,
+                        ).map_err(|_| ())?,
+                    )+
+                    $(
+                        // XXX static point
+                        $common_var: verifier.allocate_static_point(
+                            TRANSCRIPT_LABELS.$common_var.as_bytes(),
+                            // XXX avoid compression here too?
+                            common_assignments.$common_var.compress()),
+                    )+
+                };
+
+                proof_statement(&mut verifier, secret_vars, public_vars);
+
+                verifier.verify_batchable(proofs).map_err(|_| ())
             }
         }
     }

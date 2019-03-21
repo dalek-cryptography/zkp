@@ -27,37 +27,144 @@ use curve25519_dalek::scalar::Scalar;
 
 use zkp::Transcript;
 
-#[test]
-fn create_and_verify_gen_dleq() {
-    let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
-    let H = RistrettoPoint::hash_from_bytes::<Sha512>(G.compress().as_bytes());
+define_proof! {dleq, (x), (A, B, H), (G) : A = (x * G), B = (x * H) }
 
-    define_proof! {dleq, (x), (A, B, H), (G) : A = (x * G), B = (x * H) }
+#[test]
+fn create_and_verify_compact() {
+    // Shared between prover and verifier
+    let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
 
     let basepoint = dleq::CommonAssignments { G };
 
-    let x = Scalar::from(89327492234u64);
-    let A = G * &x;
-    let B = &H * &x;
+    // Prover's scope
+    let (proof, points) = {
+        let H = RistrettoPoint::hash_from_bytes::<Sha512>(b"A VRF input, for instance");
+        let x = Scalar::from(89327492234u64);
+        let A = G * &x;
+        let B = &H * &x;
 
-    let mut transcript = Transcript::new(b"DLEQTest");
-    let proof = dleq::prove_compact(
-        &mut transcript,
-        dleq::SecretAssignments { x: &x },
-        dleq::InstanceAssignments { A: &A, B: &B, H: &H },
-        basepoint,
-    );
+        let mut transcript = Transcript::new(b"DLEQTest");
+        dleq::prove_compact(
+            &mut transcript,
+            dleq::SecretAssignments { x: &x },
+            dleq::InstanceAssignments {
+                A: &A,
+                B: &B,
+                H: &H,
+            },
+            basepoint,
+        )
+    };
 
-    // serialize to bincode representation
+    // Serialize and parse bincode representation
     let proof_bytes = bincode::serialize(&proof).unwrap();
-    // parse bytes back to memory
     let parsed_proof: dleq::CompactProof = bincode::deserialize(&proof_bytes).unwrap();
 
+    // Verifier logic (a real verifier would rebuild `points`):
     let mut transcript = Transcript::new(b"DLEQTest");
-    assert!(dleq::verify_compact(
-        &parsed_proof,
-        &mut transcript,
-        dleq::InstanceAssignments { A: &A, B: &B, H: &H },
+    assert!(dleq::verify_compact(&parsed_proof, &mut transcript, points, basepoint,).is_ok());
+}
+
+#[test]
+fn create_and_verify_batchable() {
+    // Shared between prover and verifier
+    let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
+
+    let basepoint = dleq::CommonAssignments { G };
+
+    // Prover's scope
+    let (proof, points) = {
+        let H = RistrettoPoint::hash_from_bytes::<Sha512>(b"A VRF input, for instance");
+        let x = Scalar::from(89327492234u64);
+        let A = G * &x;
+        let B = &H * &x;
+
+        let mut transcript = Transcript::new(b"DLEQTest");
+        dleq::prove_batchable(
+            &mut transcript,
+            dleq::SecretAssignments { x: &x },
+            dleq::InstanceAssignments {
+                A: &A,
+                B: &B,
+                H: &H,
+            },
+            basepoint,
+        )
+    };
+
+    // Serialize and parse bincode representation
+    let proof_bytes = bincode::serialize(&proof).unwrap();
+    let parsed_proof: dleq::BatchableProof = bincode::deserialize(&proof_bytes).unwrap();
+
+    // Verifier logic (a real verifier would rebuild `points`):
+    let mut transcript = Transcript::new(b"DLEQTest");
+    assert!(dleq::verify_batchable(&parsed_proof, &mut transcript, points, basepoint,).is_ok());
+}
+
+#[test]
+fn create_batch_and_batch_verify() {
+    // Shared between prover and verifier
+    let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
+
+    let basepoint = dleq::CommonAssignments { G };
+
+    let messages = [
+        "One message",
+        "Another message",
+        "A third message",
+        "A fourth message",
+    ];
+
+    // Prover's scope
+    let (proofs, pubkeys, vrf_outputs) = {
+        let mut proofs = vec![];
+        let mut pubkeys = vec![];
+        let mut vrf_outputs = vec![];
+
+        for (i, message) in messages.iter().enumerate() {
+            let H = RistrettoPoint::hash_from_bytes::<Sha512>(message.as_bytes());
+            let x = Scalar::from(89327492234u64) * Scalar::from(i as u64);
+            let A = G * &x;
+            let B = &H * &x;
+
+            let mut transcript = Transcript::new(b"DLEQTest");
+            let (proof, compressed) = dleq::prove_batchable(
+                &mut transcript,
+                dleq::SecretAssignments { x: &x },
+                dleq::InstanceAssignments {
+                    A: &A,
+                    B: &B,
+                    H: &H,
+                },
+                basepoint,
+            );
+
+            proofs.push(proof);
+            pubkeys.push(compressed.A);
+            vrf_outputs.push(compressed.B);
+        }
+
+        (proofs, pubkeys, vrf_outputs)
+    };
+
+    // Verifier logic
+    let mut transcripts = vec![Transcript::new(b"DLEQTest"); messages.len()];
+
+    assert!(dleq::batch_verify(
+        &proofs,
+        transcripts.iter_mut().collect(),
+        dleq::BatchInstanceAssignments {
+            A: pubkeys,
+            B: vrf_outputs,
+            // XXX need a way to get challenge points from the transcript
+            H: messages
+                .iter()
+                .map(
+                    |message| RistrettoPoint::hash_from_bytes::<Sha512>(message.as_bytes())
+                        .compress()
+                )
+                .collect(),
+        },
         basepoint,
     )
     .is_ok());
