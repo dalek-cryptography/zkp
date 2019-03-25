@@ -21,7 +21,7 @@ macro_rules! __compute_formula_constraint {
     // Since there's a trailing +, we can just generate the list as normal...
     (($public_vars:ident, $secret_vars:ident)
      $( $scalar:ident * $point:ident +)+ ) => {
-        vec![ $( ($secret_vars.$scalar , $public_vars.$point) )* ]
+        vec![ $( ($secret_vars.$scalar , $public_vars.$point), )* ]
     };
 }
 
