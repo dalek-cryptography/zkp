@@ -279,7 +279,7 @@ macro_rules! define_proof {
                 transcript: &'a mut Transcript,
                 instance_assignments: CompressedInstanceAssignments,
                 common_assignments: CommonAssignments,
-            ) -> Verifier<'a> {
+            ) -> Result<Verifier<'a>, ()> {
                 use self::internal::*;
                 use $crate::verifier::*;
 
@@ -294,19 +294,20 @@ macro_rules! define_proof {
                         $instance_var: verifier.allocate_point(
                             TRANSCRIPT_LABELS.$instance_var.as_bytes(),
                             instance_assignments.$instance_var,
-                        ),
+                        ).map_err(|_| ())?,
                     )+
                     $(
                         $common_var: verifier.allocate_point(
                             TRANSCRIPT_LABELS.$common_var.as_bytes(),
                             // XXX avoid compression here too?
-                            common_assignments.$common_var.compress()),
+                            common_assignments.$common_var.compress()
+                        ).map_err(|_| ())?,
                     )+
                 };
 
                 proof_statement(&mut verifier, secret_vars, public_vars);
 
-                verifier
+                Ok(verifier)
             }
 
             /// Given a transcript and assignments to public variables, verify a proof in compact format.
@@ -316,7 +317,7 @@ macro_rules! define_proof {
                 instance_assignments: CompressedInstanceAssignments,
                 common_assignments: CommonAssignments,
             ) -> Result<(), ()> {
-                let verifier = build_verifier(transcript, instance_assignments, common_assignments);
+                let verifier = build_verifier(transcript, instance_assignments, common_assignments)?;
 
                 verifier.verify_compact(proof)
             }
@@ -328,7 +329,7 @@ macro_rules! define_proof {
                 instance_assignments: CompressedInstanceAssignments,
                 common_assignments: CommonAssignments,
             ) -> Result<(), ()> {
-                let verifier = build_verifier(transcript, instance_assignments, common_assignments);
+                let verifier = build_verifier(transcript, instance_assignments, common_assignments)?;
 
                 verifier.verify_batchable(proof)
             }
@@ -363,7 +364,7 @@ macro_rules! define_proof {
                         $common_var: verifier.allocate_static_point(
                             TRANSCRIPT_LABELS.$common_var.as_bytes(),
                             // XXX avoid compression here too?
-                            common_assignments.$common_var.compress()),
+                            common_assignments.$common_var.compress()).map_err(|_| ())?,
                     )+
                 };
 

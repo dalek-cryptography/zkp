@@ -36,7 +36,7 @@ impl<'a> Verifier<'a> {
     }
 
     pub fn allocate_scalar(&mut self, label: &'static [u8]) -> ScalarVar {
-        self.transcript.commit_scalar_var(label);
+        self.transcript.append_scalar_var(label);
         self.num_scalars += 1;
         ScalarVar(self.num_scalars - 1)
     }
@@ -45,11 +45,12 @@ impl<'a> Verifier<'a> {
         &mut self,
         label: &'static [u8],
         assignment: CompressedRistretto,
-    ) -> PointVar {
-        self.transcript.commit_point_var(label, &assignment);
+    ) -> Result<PointVar, &'static str> {
+        self.transcript
+            .validate_and_append_point_var(label, &assignment)?;
         self.points.push(assignment);
         self.point_labels.push(label);
-        PointVar(self.points.len() - 1)
+        Ok(PointVar(self.points.len() - 1))
     }
 
     pub fn verify_compact(self, proof: &CompactProof) -> Result<(), ()> {
@@ -70,8 +71,9 @@ impl<'a> Verifier<'a> {
                     .chain(iter::once(self.points[lhs_var.0].decompress())),
             )
             .ok_or(())?;
+
             self.transcript
-                .commit_blinding_commitment(self.point_labels[lhs_var.0], &commitment.compress());
+                .append_blinding_commitment(self.point_labels[lhs_var.0], &commitment);
         }
 
         // Recompute the challenge and check if it's the claimed one
@@ -90,7 +92,8 @@ impl<'a> Verifier<'a> {
         for (i, commitment) in proof.commitments.iter().enumerate() {
             let (ref lhs_var, ref rhs_lc) = self.constraints[i];
             self.transcript
-                .commit_blinding_commitment(self.point_labels[lhs_var.0], &commitment);
+                .validate_and_append_blinding_commitment(self.point_labels[lhs_var.0], &commitment)
+                .map_err(|_| ())?;
         }
 
         let minus_c = -self.transcript.get_challenge(b"chal");

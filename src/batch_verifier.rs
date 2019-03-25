@@ -62,7 +62,7 @@ impl<'a> BatchVerifier<'a> {
 
     pub fn allocate_scalar(&mut self, label: &'static [u8]) -> ScalarVar {
         for transcript in self.transcripts.iter_mut() {
-            transcript.commit_scalar_var(label);
+            transcript.append_scalar_var(label);
         }
         self.num_scalars += 1;
         ScalarVar(self.num_scalars - 1)
@@ -72,14 +72,14 @@ impl<'a> BatchVerifier<'a> {
         &mut self,
         label: &'static [u8],
         assignment: CompressedRistretto,
-    ) -> PointVar {
+    ) -> Result<PointVar, &'static str> {
         for transcript in self.transcripts.iter_mut() {
-            transcript.commit_point_var(label, &assignment);
+            transcript.validate_and_append_point_var(label, &assignment)?;
         }
         self.static_points.push(assignment);
         self.static_point_labels.push(label);
 
-        PointVar::Static(self.static_points.len() - 1)
+        Ok(PointVar::Static(self.static_points.len() - 1))
     }
 
     pub fn allocate_instance_point(
@@ -94,7 +94,7 @@ impl<'a> BatchVerifier<'a> {
         {
             let it = Iterator::zip(self.transcripts.iter_mut(), assignments.iter());
             for (transcript, assignment) in it {
-                transcript.commit_point_var(label, &assignment);
+                transcript.validate_and_append_point_var(label, &assignment)?;
             }
         }
         self.instance_points.push(assignments);
@@ -125,7 +125,7 @@ impl<'a> BatchVerifier<'a> {
                     PointVar::Static(var_idx) => self.static_point_labels[var_idx],
                     PointVar::Instance(var_idx) => self.instance_point_labels[var_idx],
                 };
-                self.transcripts[j].commit_blinding_commitment(label, &com);
+                self.transcripts[j].validate_and_append_blinding_commitment(label, &com)?;
             }
         }
 

@@ -123,7 +123,7 @@ fn create_batch_and_batch_verify() {
 
         for (i, message) in messages.iter().enumerate() {
             let H = RistrettoPoint::hash_from_bytes::<Sha512>(message.as_bytes());
-            let x = Scalar::from(89327492234u64) * Scalar::from(i as u64);
+            let x = Scalar::from(89327492234u64) * Scalar::from((i + 1) as u64);
             let A = G * &x;
             let B = &H * &x;
 

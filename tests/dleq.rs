@@ -70,10 +70,10 @@ fn create_and_verify_compact_dleq() {
     let mut verifier = Verifier::new(b"DLEQProof", &mut transcript);
 
     let var_x = verifier.allocate_scalar(b"x");
-    let var_G = verifier.allocate_point(b"G", G.compress());
-    let var_H = verifier.allocate_point(b"H", H.compress());
-    let var_A = verifier.allocate_point(b"A", cmpr_A);
-    let var_B = verifier.allocate_point(b"B", cmpr_B);
+    let var_G = verifier.allocate_point(b"G", G.compress()).unwrap();
+    let var_H = verifier.allocate_point(b"H", H.compress()).unwrap();
+    let var_A = verifier.allocate_point(b"A", cmpr_A).unwrap();
+    let var_B = verifier.allocate_point(b"B", cmpr_B).unwrap();
 
     dleq_statement(&mut verifier, var_x, var_A, var_B, var_G, var_H);
 
@@ -110,10 +110,10 @@ fn create_and_verify_batchable_dleq() {
     let mut verifier = Verifier::new(b"DLEQProof", &mut transcript);
 
     let var_x = verifier.allocate_scalar(b"x");
-    let var_G = verifier.allocate_point(b"G", G.compress());
-    let var_H = verifier.allocate_point(b"H", H.compress());
-    let var_A = verifier.allocate_point(b"A", cmpr_A);
-    let var_B = verifier.allocate_point(b"B", cmpr_B);
+    let var_G = verifier.allocate_point(b"G", G.compress()).unwrap();
+    let var_H = verifier.allocate_point(b"H", H.compress()).unwrap();
+    let var_A = verifier.allocate_point(b"A", cmpr_A).unwrap();
+    let var_B = verifier.allocate_point(b"B", cmpr_B).unwrap();
 
     dleq_statement(&mut verifier, var_x, var_A, var_B, var_G, var_H);
 
@@ -162,8 +162,8 @@ fn create_and_batch_verify_batchable_dleq() {
     let mut verifier = BatchVerifier::new(b"DLEQProof", batch_size, transcript_refs).unwrap();
 
     let var_x = verifier.allocate_scalar(b"x");
-    let var_G = verifier.allocate_static_point(b"G", G.compress());
-    let var_H = verifier.allocate_static_point(b"H", H.compress());
+    let var_G = verifier.allocate_static_point(b"G", G.compress()).unwrap();
+    let var_H = verifier.allocate_static_point(b"H", H.compress()).unwrap();
     let var_A = verifier.allocate_instance_point(b"A", cmpr_As).unwrap();
     let var_B = verifier.allocate_instance_point(b"B", cmpr_Bs).unwrap();
 
