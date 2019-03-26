@@ -31,7 +31,7 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 
 use zkp::Transcript;
-use zkp::{BatchVerifier, Prover, SchnorrCS, Verifier};
+use zkp::{batch_verifier::BatchVerifier, prover::Prover, SchnorrCS, verifier::Verifier};
 
 #[allow(non_snake_case)]
 fn dleq_statement<CS: SchnorrCS>(
@@ -105,10 +105,10 @@ fn verify_compact_dleq(b: &mut Bencher) {
         let mut verifier = Verifier::new(b"DLEQProof", &mut transcript);
 
         let var_x = verifier.allocate_scalar(b"x");
-        let var_G = verifier.allocate_point(b"G", cmpr_G);
-        let var_H = verifier.allocate_point(b"H", cmpr_H);
-        let var_A = verifier.allocate_point(b"A", cmpr_A);
-        let var_B = verifier.allocate_point(b"B", cmpr_B);
+        let var_G = verifier.allocate_point(b"G", cmpr_G).unwrap();
+        let var_H = verifier.allocate_point(b"H", cmpr_H).unwrap();
+        let var_A = verifier.allocate_point(b"A", cmpr_A).unwrap();
+        let var_B = verifier.allocate_point(b"B", cmpr_B).unwrap();
 
         dleq_statement(&mut verifier, var_x, var_A, var_B, var_G, var_H);
 
@@ -174,10 +174,10 @@ fn verify_batchable_dleq(b: &mut Bencher) {
         let mut verifier = Verifier::new(b"DLEQProof", &mut transcript);
 
         let var_x = verifier.allocate_scalar(b"x");
-        let var_G = verifier.allocate_point(b"G", cmpr_G);
-        let var_H = verifier.allocate_point(b"H", cmpr_H);
-        let var_A = verifier.allocate_point(b"A", cmpr_A);
-        let var_B = verifier.allocate_point(b"B", cmpr_B);
+        let var_G = verifier.allocate_point(b"G", cmpr_G).unwrap();
+        let var_H = verifier.allocate_point(b"H", cmpr_H).unwrap();
+        let var_A = verifier.allocate_point(b"A", cmpr_A).unwrap();
+        let var_B = verifier.allocate_point(b"B", cmpr_B).unwrap();
 
         dleq_statement(&mut verifier, var_x, var_A, var_B, var_G, var_H);
 
@@ -225,8 +225,8 @@ fn batch_verify_batchable_dleq_helper(batch_size: usize, b: &mut Bencher) {
         let mut verifier = BatchVerifier::new(b"DLEQProof", batch_size, transcript_refs).unwrap();
 
         let var_x = verifier.allocate_scalar(b"x");
-        let var_G = verifier.allocate_static_point(b"G", G.compress());
-        let var_H = verifier.allocate_static_point(b"H", H.compress());
+        let var_G = verifier.allocate_static_point(b"G", G.compress()).unwrap();
+        let var_H = verifier.allocate_static_point(b"H", H.compress()).unwrap();
         let var_A = verifier
             .allocate_instance_point(b"A", cmpr_As.clone())
             .unwrap();

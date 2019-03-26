@@ -31,74 +31,28 @@ use curve25519_dalek::scalar::Scalar;
 
 use zkp::Transcript;
 
-mod cmz13 {
+mod cmz {
     // Proof statement for "credential presentation with 10 hidden attributes" from CMZ'13.
     define_proof! {
         cred_show_10,
-        (m_1, m_2, m_3, m_4, m_5, m_6, m_7, m_8, m_9, m_10,
-         z_1, z_2, z_3, z_4, z_5, z_6, z_7, z_8, z_9, z_10, minus_z_Q),
-        (C_1, C_2, C_3, C_4, C_5, C_6, C_7, C_8, C_9, C_10,
-         X_1, X_2, X_3, X_4, X_5, X_6, X_7, X_8, X_9, X_10,
-         P, Q, A, B, V)
+        "CMZ cred show n=10",
+        (m_1, m_2, m_3, m_4, m_5, m_6, m_7, m_8, m_9, m_10, z_1, z_2, z_3, z_4, z_5, z_6, z_7, z_8, z_9, z_10, minus_z_Q),
+        (C_1, C_2, C_3, C_4, C_5, C_6, C_7, C_8, C_9, C_10, P, Q, V),
+        (X_1, X_2, X_3, X_4, X_5, X_6, X_7, X_8, X_9, X_10, A, B)
         :
-        C_1 = (P * m_1 + A * z_1), C_2 = (P * m_2 + A * z_2),
-        C_3 = (P * m_3 + A * z_3), C_4 = (P * m_4 + A * z_4),
-        C_5 = (P * m_5 + A * z_5), C_6 = (P * m_6 + A * z_6),
-        C_7 = (P * m_7 + A * z_7), C_8 = (P * m_8 + A * z_8),
-        C_9 = (P * m_9 + A * z_9), C_10 = (P * m_10 + A * z_10),
-        V = (X_1*m_1 + X_2*m_2 + X_3*m_3 + X_4*m_4 + X_5*m_5 + X_6*m_6
-             + X_7*m_7 + X_8*m_8 + X_9*m_9 + X_10*m_10 + Q*minus_z_Q)
+        C_1  = (m_1 * P + z_1  * A),
+        C_2  = (m_2 * P + z_2  * A),
+        C_3  = (m_3 * P + z_3  * A),
+        C_4  = (m_4 * P + z_4  * A),
+        C_5  = (m_5 * P + z_5  * A),
+        C_6  = (m_6 * P + z_6  * A),
+        C_7  = (m_7 * P + z_7  * A),
+        C_8  = (m_8 * P + z_8  * A),
+        C_9  = (m_9 * P + z_9  * A),
+        C_10 = (m_10* P + z_10 * A),
+        V = (m_1*X_1 + m_2*X_2 + m_3*X_3 + m_4*X_4 + m_5*X_5 + m_6*X_6
+             + m_7*X_7 + m_8*X_8 + m_9*X_9 + m_10*X_10 + minus_z_Q*Q)
     }
 }
 
-#[bench]
-fn create_gen_dleq(b: &mut Bencher) {
-    let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
-    let H = RistrettoPoint::hash_from_bytes::<Sha512>(G.compress().as_bytes());
-
-    define_proof! {dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
-
-    let x = Scalar::from(89327492234u64);
-    let A = G * &x;
-    let B = &H * &x;
-
-    let publics = dleq::Publics {
-        A: &A,
-        B: &B,
-        G: G,
-        H: &H,
-    };
-    let secrets = dleq::Secrets { x: &x };
-
-    b.iter(|| {
-        let mut transcript = Transcript::new(b"DLEQBenchCreate");
-        dleq::Proof::create(&mut transcript, publics, secrets)
-    });
-}
-
-#[bench]
-fn verify_gen_dleq(b: &mut Bencher) {
-    let G = &dalek_constants::RISTRETTO_BASEPOINT_POINT;
-    let H = RistrettoPoint::hash_from_bytes::<Sha512>(G.compress().as_bytes());
-
-    define_proof! {dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
-
-    let x = Scalar::from(89327492234u64);
-    let A = G * &x;
-    let B = &H * &x;
-
-    let publics = dleq::Publics {
-        A: &A,
-        B: &B,
-        G: G,
-        H: &H,
-    };
-    let secrets = dleq::Secrets { x: &x };
-
-    let mut transcript = Transcript::new(b"DLEQBenchVerify");
-    let proof = dleq::Proof::create(&mut transcript, publics, secrets);
-    b.iter(|| {
-        let mut transcript = Transcript::new(b"DLEQBenchVerify");
-        proof.verify(&mut transcript, publics).is_ok()
-    });
-}
+define_proof! {dleq, "DLEQ proof", (x), (A, B, H), (G) : A = (x * G), B = (x * H) }
