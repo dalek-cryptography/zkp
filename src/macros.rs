@@ -124,6 +124,20 @@ macro_rules! define_proof {
         $($lhs:ident = $statement:tt),+
     ) => {
         /// An auto-generated Schnorr proof implementation.
+        ///
+        /// Proofs are created using [`prove_compact`] or
+        /// [`prove_batchable`], producing [`CompactProof`]s or
+        /// [`BatchableProof`]s respectively.  These are verified
+        /// using [`verify_compact`] and [`verify_batchable`];
+        /// [`BatchableProofs`] can also be batch-verified using
+        /// [`batch_verify`], but they have slightly larger proof
+        /// sizes compared to [`CompactProof`]s.
+        ///
+        /// The internal details of the proof statement are accessible
+        /// in the [`internals`] module.  While this is not necessary
+        /// to create and verify proofs, the it can be used with the
+        /// lower-level constraint system API to manually combine
+        /// statements from different proofs.
         pub mod $proof_module_name {
             use $crate::curve25519_dalek::scalar::Scalar;
             use $crate::curve25519_dalek::ristretto::RistrettoPoint;
