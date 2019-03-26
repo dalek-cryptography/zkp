@@ -13,7 +13,6 @@ exclude = [
 ]
 
 [dependencies]
-sha2 = "0.8"
 merlin = "1"
 rand = "0.6"
 serde = "1.0"
@@ -21,6 +20,7 @@ serde_derive = "1.0"
 
 [dev-dependencies]
 bincode = "1"
+sha2 = "0.8"
 
 [dependencies.curve25519-dalek]
 features = ["serde", "nightly", "alloc"]
@@ -34,3 +34,4 @@ u64_backend = ["curve25519-dalek/u64_backend"]
 avx2_backend = ["curve25519-dalek/avx2_backend"]
 nightly = ["curve25519-dalek/nightly"]
 bench = [ ]
+debug-transcript = ["merlin/debug-transcript"]
