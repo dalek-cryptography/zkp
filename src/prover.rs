@@ -23,7 +23,7 @@ pub struct ScalarVar(usize);
 pub struct PointVar(usize);
 
 impl<'a> Prover<'a> {
-    pub fn new(proof_label: &[u8], transcript: &'a mut Transcript) -> Self {
+    pub fn new(proof_label: &'static [u8], transcript: &'a mut Transcript) -> Self {
         transcript.domain_sep(proof_label);
         Prover {
             transcript,

@@ -17,7 +17,7 @@ pub trait SchnorrCS {
 
 pub trait TranscriptProtocol {
     /// Appends `label` to the transcript as a domain separator.
-    fn domain_sep(&mut self, label: &[u8]);
+    fn domain_sep(&mut self, label: &'static [u8]);
 
     /// Append the `label` for a scalar variable to the transcript.
     ///
@@ -75,11 +75,11 @@ pub trait TranscriptProtocol {
     ) -> Result<(), &'static str>;
 
     /// Get a scalar challenge from the transcript.
-    fn get_challenge(&mut self, label: &[u8]) -> Scalar;
+    fn get_challenge(&mut self, label: &'static [u8]) -> Scalar;
 }
 
 impl TranscriptProtocol for Transcript {
-    fn domain_sep(&mut self, label: &[u8]) {
+    fn domain_sep(&mut self, label: &'static [u8]) {
         self.commit_bytes(b"zkp dom-sep", label);
     }
 
@@ -135,9 +135,9 @@ impl TranscriptProtocol for Transcript {
         Ok(())
     }
 
-    fn get_challenge(&mut self, label: &[u8]) -> Scalar {
+    fn get_challenge(&mut self, label: &'static [u8]) -> Scalar {
         let mut bytes = [0; 64];
-        self.challenge_bytes(b"chal", &mut bytes);
+        self.challenge_bytes(label, &mut bytes);
         Scalar::from_bytes_mod_order_wide(&bytes)
     }
 }

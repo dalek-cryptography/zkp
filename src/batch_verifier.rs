@@ -38,7 +38,7 @@ pub enum PointVar {
 
 impl<'a> BatchVerifier<'a> {
     pub fn new(
-        proof_label: &[u8],
+        proof_label: &'static [u8],
         batch_size: usize,
         mut transcripts: Vec<&'a mut Transcript>,
     ) -> Result<Self, &'static str> {
