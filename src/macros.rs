@@ -111,6 +111,8 @@ macro_rules! define_proof {
     (
         $proof_module_name:ident // Name of the module to create
         ,
+        $proof_label_string:expr // A string literal, used as a domain separator
+        ,
         ( $($secret_var:ident),+ ) // Secret variables, sep by commas
         ,
         ( $($instance_var:ident),* ) // Public instance variables, separated by commas
@@ -141,7 +143,7 @@ macro_rules! define_proof {
                 use $crate::SchnorrCS;
 
                 /// The proof label committed to the transcript as a domain separator.
-                pub const PROOF_LABEL: &'static str = stringify!($proof_module_name);
+                pub const PROOF_LABEL: &'static str = $proof_label_string;
 
                 /// A container type that holds transcript labels for secret variables.
                 pub struct TranscriptLabels {

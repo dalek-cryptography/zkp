@@ -25,7 +25,7 @@ use curve25519_dalek::scalar::Scalar;
 
 use zkp::Transcript;
 
-define_proof! {dleq, (x), (A, B, H), (G) : A = (x * G), B = (x * H) }
+define_proof! {dleq, "DLEQ Example Proof", (x), (A, B, H), (G) : A = (x * G), B = (x * H) }
 
 #[test]
 fn create_and_verify_compact() {
