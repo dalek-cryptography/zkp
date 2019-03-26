@@ -1,7 +1,7 @@
 use std::ops::{Index, IndexMut};
 
 pub struct Matrix<T> {
-    rows: usize,
+    _rows: usize,
     cols: usize,
     entries: Vec<T>,
 }
@@ -11,7 +11,7 @@ impl<T: Default> Matrix<T> {
         let mut entries = Vec::new();
         entries.resize_with(rows * cols, Default::default);
         Matrix {
-            rows,
+            _rows: rows,
             cols,
             entries,
         }

@@ -126,7 +126,6 @@ macro_rules! define_proof {
             use $crate::curve25519_dalek::scalar::Scalar;
             use $crate::curve25519_dalek::ristretto::RistrettoPoint;
             use $crate::curve25519_dalek::ristretto::CompressedRistretto;
-            use $crate::rand::thread_rng;
 
             pub use $crate::merlin::Transcript;
 

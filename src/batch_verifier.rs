@@ -1,5 +1,4 @@
 use rand::{thread_rng, Rng};
-use std::iter;
 
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;

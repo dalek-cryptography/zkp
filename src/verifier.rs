@@ -90,7 +90,7 @@ impl<'a> Verifier<'a> {
         // Feed the prover's commitments into the transcript:
         self.transcript.commit_bytes(b"commitments", b"");
         for (i, commitment) in proof.commitments.iter().enumerate() {
-            let (ref lhs_var, ref rhs_lc) = self.constraints[i];
+            let (ref lhs_var, ref _rhs_lc) = self.constraints[i];
             self.transcript
                 .validate_and_append_blinding_commitment(self.point_labels[lhs_var.0], &commitment)
                 .map_err(|_| ())?;
