@@ -27,27 +27,33 @@ macro_rules! __compute_formula_constraint {
 
 /// Creates a module with code required to produce a non-interactive
 /// zero-knowledge proof statement, to serialize it to wire format, to
-/// parse from wire format, and to verify the proof statement.
+/// parse from wire format, and to verify the proof or batch-verify
+/// multiple proofs.
 ///
 /// The statement is specified in an embedded DSL resembling
 /// Camenisch-Stadler notation.  For instance, a proof of knowledge of
 /// two equal discrete logarithms ("DLEQ") is specified as:
 ///
 /// ```rust,ignore
-/// define_proof!{dleq, (x), (A, B, G, H) : A = (G * x), B = (H * x) }
+/// define_proof! {dleq, "DLEQ Proof", (x), (A, B, H), (G) : A = (x * G), B = (x * H) }
 /// ```
 ///
 /// This creates a module `dleq` with code for proving knowledge of a
-/// secret `x: Scalar` such that `A = G*x`, `B = H*x` for public
-/// parameters `A, B, G, H: RistrettoPoint`.  In general the syntax is
+/// secret `x: Scalar` such that `A = x * G`, `B = x * H` for
+/// per-proof public parameters `A, B, H: RistrettoPoint` and common
+/// parameters `G: RistrettoPoint`; the UTF-8 string `"DLEQ Proof"` is
+/// added to the transcript as a domain separator.
 ///
+/// In general the syntax is
 /// ```rust,ignore
 /// define_proof!{
-///     module_name, // used to label proof statements
-///     (x,y,z,...), // secret variable names
-///     (A,B,C,...)  // public parameter names
+///     module_name,   // all generated code for this statement goes here
+///     "Proof Label", // a UTF-8 domain separator unique to the statement
+///     (x,y,z,...),   // secret variable labels (preferably lower-case)
+///     (A,B,C,...),   // public per-proof parameter labels (upper-case)
+///     (G,H,...)      // public common parameter labels (upper-case)
 ///     :
-///     LHS = (A * x + B * y + C * z + ... ),  // comma-seperated statements
+///     LHS = (x * A + y * B + z * C + ... ),  // comma-separated statements
 ///     ...
 /// }
 /// ```
@@ -57,55 +63,13 @@ macro_rules! __compute_formula_constraint {
 /// the right-hand side is a sum of public points multiplied by secret
 /// scalars.
 ///
-/// Inside the generated module `module_name`, the macro defines three
-/// structs:
+/// Points which have the same assignment for all instances of the
+/// proof statement (for instance, a basepoint) should be specified as
+/// common public parameters, so that the generated implementation of
+/// batch verification is more efficient.
 ///
-/// A `Publics` struct corresponding to the public parameters, of the
-/// form
-///
-/// ```rust,ignore
-/// pub struct Publics<'a> { pub A: &'a RistrettoPoint, ... }
-/// ```
-///
-/// A `Secrets` struct corresponding to the secret parameters, of the
-/// form
-///
-/// ```rust,ignore
-/// pub struct Secrets<'a> { pub x: &'a Scalar, ... }
-/// ```
-///
-/// A `Proof` struct, of the form
-///
-/// ```rust,ignore
-/// #[derive(Serialize, Deserialize)]
-/// pub struct Proof { ... }
-///
-/// impl Proof {
-///     pub fn create(
-///         transcript: &mut Transcript,
-///         publics: Publics,
-///         secrets: Secrets,
-///     ) -> Proof { ... }
-///
-///     pub fn verify(
-///         &self,
-///         &mut Transcript,
-///         publics: Publics,
-///     ) -> Result<(),()> { ... }
-/// }
-/// ```
-///
-/// The `Proof` struct derives the Serde traits, so it can be
-/// serialized and deserialized to various wire formats.
-///
-/// The `Publics` and `Secrets` structs are used to fake named
-/// arguments in the input to `create` and `verify`.  Proof creation
-/// is done in constant time.  Proof verification uses variable-time
-/// code.
-///
-/// As an example, we can create and verify a DLEQ proof as follows:
-///
-/// XXX readd example once API is finished.
+/// Proof creation is done in constant time.  Proof verification uses
+/// variable-time code.
 #[macro_export]
 macro_rules! define_proof {
     (
@@ -125,19 +89,20 @@ macro_rules! define_proof {
     ) => {
         /// An auto-generated Schnorr proof implementation.
         ///
-        /// Proofs are created using [`prove_compact`] or
-        /// [`prove_batchable`], producing [`CompactProof`]s or
-        /// [`BatchableProof`]s respectively.  These are verified
-        /// using [`verify_compact`] and [`verify_batchable`];
-        /// [`BatchableProofs`] can also be batch-verified using
-        /// [`batch_verify`], but they have slightly larger proof
-        /// sizes compared to [`CompactProof`]s.
+        /// Proofs are created using `prove_compact` or
+        /// `prove_batchable`, producing `CompactProof`s or
+        /// `BatchableProof`s respectively.  These are verified
+        /// using `verify_compact` and `verify_batchable`;
+        /// `BatchableProofs` can also be batch-verified using
+        /// `batch_verify`, but they have slightly larger proof
+        /// sizes compared to `CompactProof`s.
         ///
         /// The internal details of the proof statement are accessible
-        /// in the [`internals`] module.  While this is not necessary
+        /// in the `internals` module.  While this is not necessary
         /// to create and verify proofs, the it can be used with the
         /// lower-level constraint system API to manually combine
         /// statements from different proofs.
+        #[allow(non_snake_case)]
         pub mod $proof_module_name {
             use $crate::curve25519_dalek::scalar::Scalar;
             use $crate::curve25519_dalek::ristretto::RistrettoPoint;
