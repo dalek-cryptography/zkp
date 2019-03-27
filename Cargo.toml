@@ -25,7 +25,6 @@ sha2 = "0.8"
 [dependencies.curve25519-dalek]
 features = ["serde", "nightly", "alloc"]
 version = "1"
-default-features = false
 
 [features]
 default = ["u64_backend"]
