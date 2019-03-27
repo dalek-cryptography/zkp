@@ -21,14 +21,16 @@ use curve25519_dalek::scalar::Scalar;
 extern crate zkp;
 pub use zkp::Transcript;
 
+define_proof! {sig_proof, "Sig", (x), (A), (B) : A = (x * B) }
 define_proof! {vrf_proof, "VRF", (x), (A, G, H), (B) : A = (x * B), G = (x * H) }
 
-trait VrfTranscriptProtocol {
+/// Defines how the construction interacts with the transcript.
+trait TranscriptProtocol {
     fn append_message(&mut self, message: &[u8]);
     fn hash_to_group(self) -> RistrettoPoint;
 }
 
-impl VrfTranscriptProtocol for Transcript {
+impl TranscriptProtocol for Transcript {
     fn append_message(&mut self, message: &[u8]) {
         self.commit_bytes(b"msg", message);
     }
@@ -39,7 +41,6 @@ impl VrfTranscriptProtocol for Transcript {
     }
 }
 
-/// A VRF secret key.
 #[derive(Clone)]
 pub struct SecretKey(Scalar);
 
@@ -49,7 +50,6 @@ impl SecretKey {
     }
 }
 
-/// A VRF public key.
 #[derive(Copy, Clone)]
 pub struct PublicKey(RistrettoPoint, CompressedRistretto);
 
@@ -60,7 +60,6 @@ impl<'a> From<&'a SecretKey> for PublicKey {
     }
 }
 
-/// A VRF keypair.
 pub struct KeyPair {
     sk: SecretKey,
     pk: PublicKey,
@@ -73,20 +72,29 @@ impl From<SecretKey> for KeyPair {
     }
 }
 
-/// The output of a VRF.
-pub struct VrfOutput(CompressedRistretto);
+pub struct Signature(sig_proof::BatchableProof);
 
-impl VrfOutput {
-    fn as_bytes(&self) -> &[u8; 32] {
-        self.0.as_bytes()
-    }
-}
+pub struct VrfOutput(CompressedRistretto);
 
 pub struct VrfProof(vrf_proof::CompactProof);
 
 impl KeyPair {
     fn public_key(&self) -> PublicKey {
         self.pk
+    }
+
+    fn sign(&self, message: &[u8], sig_transcript: &mut Transcript) -> Signature {
+        sig_transcript.append_message(message);
+        let (proof, points) = sig_proof::prove_batchable(
+            sig_transcript,
+            sig_proof::ProveAssignments {
+                x: &self.sk.0,
+                A: &self.pk.0,
+                B: &dalek_constants::RISTRETTO_BASEPOINT_POINT,
+            },
+        );
+
+        Signature(proof)
     }
 
     fn vrf(
@@ -116,6 +124,25 @@ impl KeyPair {
     }
 }
 
+impl Signature {
+    fn verify(
+        &self,
+        message: &[u8],
+        pubkey: &PublicKey,
+        sig_transcript: &mut Transcript,
+    ) -> Result<(), ()> {
+        sig_transcript.append_message(message);
+        sig_proof::verify_batchable(
+            &self.0,
+            sig_transcript,
+            sig_proof::VerifyAssignments {
+                A: &pubkey.1,
+                B: &dalek_constants::RISTRETTO_BASEPOINT_COMPRESSED,
+            },
+        )
+    }
+}
+
 impl VrfOutput {
     fn verify(
         &self,
@@ -140,6 +167,95 @@ impl VrfOutput {
             },
         )
     }
+}
+
+#[test]
+fn create_and_verify_sig() {
+    let domain_sep = b"My Sig Application";
+    let msg1 = b"Test Message 1";
+    let msg2 = b"Test Message 2";
+
+    let kp1 = KeyPair::from(SecretKey::new(&mut thread_rng()));
+    let pk1 = kp1.public_key();
+    let kp2 = KeyPair::from(SecretKey::new(&mut thread_rng()));
+    let pk2 = kp2.public_key();
+
+    let sig1 = kp1.sign(&msg1[..], &mut Transcript::new(domain_sep));
+
+    let sig2 = kp2.sign(&msg2[..], &mut Transcript::new(domain_sep));
+
+    // Check that each signature verifies
+    assert!(sig1
+        .verify(msg1, &pk1, &mut Transcript::new(domain_sep),)
+        .is_ok());
+    assert!(sig2
+        .verify(msg2, &pk2, &mut Transcript::new(domain_sep),)
+        .is_ok());
+
+    // Check that verification with the wrong pubkey fails
+    assert!(sig1
+        .verify(msg1, &pk2, &mut Transcript::new(domain_sep),)
+        .is_err());
+    assert!(sig2
+        .verify(msg2, &pk1, &mut Transcript::new(domain_sep),)
+        .is_err());
+
+    // Check that verification with the wrong message fails
+    assert!(sig1
+        .verify(msg2, &pk1, &mut Transcript::new(domain_sep),)
+        .is_err());
+    assert!(sig2
+        .verify(msg1, &pk2, &mut Transcript::new(domain_sep),)
+        .is_err());
+
+    // Check that verification with the wrong domain separator fails
+    assert!(sig1
+        .verify(msg1, &pk1, &mut Transcript::new(b"Wrong"),)
+        .is_err());
+    assert!(sig2
+        .verify(msg2, &pk2, &mut Transcript::new(b"Wrong"),)
+        .is_err());
+}
+
+#[test]
+fn counterparty_signature_chain() {
+    let domain_sep = b"Counterparty Example";
+
+    let msg1a = b"In this test, two counterparties exchange signatures.";
+    let msg2a = b"However, the counterparties sign and verify messages";
+    let msg1b = b"using stateful transcript objects.";
+    let msg2b = b"When party 1 signs, the party 1 transcript changes;";
+    let msg1c = b"when party 2 verifies, the party 2 transcript syncs.";
+    let msg2c = b"In this way, the transcript states ratchet stateful signatures.";
+
+    let kp1 = KeyPair::from(SecretKey::new(&mut thread_rng()));
+    let pk1 = kp1.public_key();
+    let kp2 = KeyPair::from(SecretKey::new(&mut thread_rng()));
+    let pk2 = kp2.public_key();
+
+    let mut trans1 = Transcript::new(domain_sep);
+    let mut trans2 = Transcript::new(domain_sep);
+
+    // Round a, Party 1 -----> Party 2
+    let sig1a = kp1.sign(&msg1a[..], &mut trans1);
+    assert!(sig1a.verify(msg1a, &pk1, &mut trans2).is_ok());
+    // Round a, Party 2 -----> Party 1
+    let sig2a = kp2.sign(&msg2a[..], &mut trans2);
+    assert!(sig2a.verify(msg2a, &pk2, &mut trans1).is_ok());
+
+    // Round b, Party 1 -----> Party 2
+    let sig1b = kp1.sign(&msg1b[..], &mut trans1);
+    assert!(sig1b.verify(msg1b, &pk1, &mut trans2).is_ok());
+    // Round b, Party 2 -----> Party 1
+    let sig2b = kp2.sign(&msg2b[..], &mut trans2);
+    assert!(sig2b.verify(msg2b, &pk2, &mut trans1).is_ok());
+
+    // Round c, Party 1 -----> Party 2
+    let sig1c = kp1.sign(&msg1c[..], &mut trans1);
+    assert!(sig1c.verify(msg1c, &pk1, &mut trans2).is_ok());
+    // Round c, Party 2 -----> Party 1
+    let sig2c = kp2.sign(&msg2c[..], &mut trans2);
+    assert!(sig2c.verify(msg2c, &pk2, &mut trans1).is_ok());
 }
 
 #[test]
