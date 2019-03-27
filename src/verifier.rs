@@ -58,7 +58,6 @@ impl<'a> Verifier<'a> {
         let minus_c = -proof.challenge;
 
         // XXX decompress up front
-        self.transcript.commit_bytes(b"commitments", b"");
         for (lhs_var, rhs_lc) in &self.constraints {
             let commitment = RistrettoPoint::optional_multiscalar_mul(
                 rhs_lc
@@ -88,7 +87,6 @@ impl<'a> Verifier<'a> {
 
     pub fn verify_batchable(self, proof: &BatchableProof) -> Result<(), ()> {
         // Feed the prover's commitments into the transcript:
-        self.transcript.commit_bytes(b"commitments", b"");
         for (i, commitment) in proof.commitments.iter().enumerate() {
             let (ref lhs_var, ref _rhs_lc) = self.constraints[i];
             self.transcript

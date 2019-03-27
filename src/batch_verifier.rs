@@ -118,7 +118,6 @@ impl<'a> BatchVerifier<'a> {
 
         // Feed each prover's commitments into their respective transcript
         for j in 0..self.batch_size {
-            self.transcripts[j].commit_bytes(b"commitments", b"");
             for (i, com) in proofs[j].commitments.iter().enumerate() {
                 let label = match self.constraints[i].0 {
                     PointVar::Static(var_idx) => self.static_point_labels[var_idx],

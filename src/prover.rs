@@ -68,7 +68,6 @@ impl<'a> Prover<'a> {
             .collect::<Vec<Scalar>>();
 
         // Commit to each blinded LHS
-        self.transcript.commit_bytes(b"commitments", b"");
         let mut commitments = Vec::with_capacity(self.constraints.len());
         for (lhs_var, rhs_lc) in &self.constraints {
             let commitment = RistrettoPoint::multiscalar_mul(
