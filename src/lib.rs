@@ -9,19 +9,12 @@
 // Authors:
 // - Henry de Valence <hdevalence@hdevalence.ca>
 
-//! This crate has an experimental zero-knowledge proof compiler
-//! implemented using Rust macros.
-//!
-//! It provides a DSL resembling Camenisch-Stadler notation for proving
-//! statements about discrete logarithms in the Ristretto group on
-//! Curve25519, as implemented in
-//! [`curve25519-dalek`](https://github.com/isislovecruft/curve25519-dalek).
-//! Note that both the Ristretto implementation in `curve25519-dalek`, *as
-//! well as this library*, are currently **UNFINISHED, UNREVIEWED, AND
-//! EXPERIMENTAL**.  (I haven't actually checked carefully that the
-//! proofs are sound, for instance...)
 #![allow(non_snake_case)]
 #![cfg_attr(feature = "bench", feature(test))]
+
+extern crate failure;
+#[macro_use]
+extern crate failure_derive;
 
 extern crate serde;
 
@@ -38,10 +31,12 @@ pub extern crate rand;
 pub use merlin::Transcript;
 
 mod constraints;
+mod errors;
 mod proofs;
 mod util;
 
 pub use constraints::*;
+pub use errors::*;
 pub use proofs::*;
 
 pub mod batch_verifier;
@@ -51,4 +46,3 @@ pub mod verifier;
 #[macro_use]
 mod macros;
 pub use macros::*;
-

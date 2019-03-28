@@ -31,7 +31,7 @@ use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 
 use zkp::Transcript;
-use zkp::{batch_verifier::BatchVerifier, prover::Prover, SchnorrCS, verifier::Verifier};
+use zkp::{batch_verifier::BatchVerifier, prover::Prover, verifier::Verifier, SchnorrCS};
 
 #[allow(non_snake_case)]
 fn dleq_statement<CS: SchnorrCS>(

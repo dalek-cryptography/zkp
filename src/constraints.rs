@@ -4,6 +4,8 @@ use curve25519_dalek::traits::IsIdentity;
 
 use merlin::Transcript;
 
+use errors::ProofError;
+
 pub trait SchnorrCS {
     type ScalarVar: Copy;
     type PointVar: Copy;
@@ -47,7 +49,7 @@ pub trait TranscriptProtocol {
         &mut self,
         label: &'static [u8],
         point: &CompressedRistretto,
-    ) -> Result<(), &'static str>;
+    ) -> Result<(), ProofError>;
 
     /// Append a blinding factor commitment to the transcript, for use by
     /// a prover.
@@ -72,7 +74,7 @@ pub trait TranscriptProtocol {
         &mut self,
         label: &'static [u8],
         point: &CompressedRistretto,
-    ) -> Result<(), &'static str>;
+    ) -> Result<(), ProofError>;
 
     /// Get a scalar challenge from the transcript.
     fn get_challenge(&mut self, label: &'static [u8]) -> Scalar;
@@ -103,9 +105,9 @@ impl TranscriptProtocol for Transcript {
         &mut self,
         label: &'static [u8],
         point: &CompressedRistretto,
-    ) -> Result<(), &'static str> {
+    ) -> Result<(), ProofError> {
         if point.is_identity() {
-            return Err("input point is the identity element");
+            return Err(ProofError::VerificationFailure);
         }
         self.commit_bytes(b"ptvar", label);
         self.commit_bytes(b"val", point.as_bytes());
@@ -127,9 +129,9 @@ impl TranscriptProtocol for Transcript {
         &mut self,
         label: &'static [u8],
         point: &CompressedRistretto,
-    ) -> Result<(), &'static str> {
+    ) -> Result<(), ProofError> {
         if point.is_identity() {
-            return Err("input point is the identity element");
+            return Err(ProofError::VerificationFailure);
         }
         self.commit_bytes(b"blindcom", label);
         self.commit_bytes(b"val", point.as_bytes());

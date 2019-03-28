@@ -4,7 +4,7 @@ use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::{IsIdentity, VartimeMultiscalarMul};
 
-use crate::Transcript;
+use crate::{ProofError, Transcript};
 
 use super::constraints::*;
 use super::proofs::*;
@@ -40,9 +40,9 @@ impl<'a> BatchVerifier<'a> {
         proof_label: &'static [u8],
         batch_size: usize,
         mut transcripts: Vec<&'a mut Transcript>,
-    ) -> Result<Self, &'static str> {
+    ) -> Result<Self, ProofError> {
         if transcripts.len() != batch_size {
-            return Err("transcripts do not match batch size");
+            return Err(ProofError::BatchSizeMismatch);
         }
         for i in 0..transcripts.len() {
             transcripts[i].domain_sep(proof_label);
@@ -71,7 +71,7 @@ impl<'a> BatchVerifier<'a> {
         &mut self,
         label: &'static [u8],
         assignment: CompressedRistretto,
-    ) -> Result<PointVar, &'static str> {
+    ) -> Result<PointVar, ProofError> {
         for transcript in self.transcripts.iter_mut() {
             transcript.validate_and_append_point_var(label, &assignment)?;
         }
@@ -85,9 +85,9 @@ impl<'a> BatchVerifier<'a> {
         &mut self,
         label: &'static [u8],
         assignments: Vec<CompressedRistretto>,
-    ) -> Result<PointVar, &'static str> {
+    ) -> Result<PointVar, ProofError> {
         if assignments.len() != self.batch_size {
-            return Err("assignments len does not match batch size");
+            return Err(ProofError::BatchSizeMismatch);
         }
         // nll
         {
@@ -102,17 +102,17 @@ impl<'a> BatchVerifier<'a> {
         Ok(PointVar::Instance(self.instance_points.len() - 1))
     }
 
-    pub fn verify_batchable(mut self, proofs: &[BatchableProof]) -> Result<(), &'static str> {
+    pub fn verify_batchable(mut self, proofs: &[BatchableProof]) -> Result<(), ProofError> {
         if proofs.len() != self.batch_size {
-            return Err("proofs len does not match batch size");
+            return Err(ProofError::BatchSizeMismatch);
         }
 
         for proof in proofs {
             if proof.commitments.len() != self.constraints.len() {
-                return Err("proof does not have correct num of commitments");
+                return Err(ProofError::VerificationFailure);
             }
             if proof.responses.len() != self.num_scalars {
-                return Err("proof does not have correct num of responses");
+                return Err(ProofError::VerificationFailure);
             }
         }
 
@@ -193,12 +193,12 @@ impl<'a> BatchVerifier<'a> {
                 .chain(flat_instance_points.iter())
                 .map(|pt| pt.decompress()),
         )
-        .ok_or("failed decompression in verify")?;
+        .ok_or(ProofError::VerificationFailure)?;
 
         if check.is_identity() {
             Ok(())
         } else {
-            Err("bad verify")
+            Err(ProofError::VerificationFailure)
         }
     }
 }

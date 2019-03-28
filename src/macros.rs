@@ -113,7 +113,7 @@ macro_rules! define_proof {
             use $crate::prover::Prover;
             use $crate::verifier::Verifier;
 
-            pub use $crate::{CompactProof, BatchableProof};
+            pub use $crate::{CompactProof, BatchableProof, ProofError};
 
             /// The generated [`internal`] module contains lower-level
             /// functions at the level of the Schnorr constraint
@@ -281,7 +281,7 @@ macro_rules! define_proof {
             fn build_verifier<'a>(
                 transcript: &'a mut Transcript,
                 assignments: VerifyAssignments,
-            ) -> Result<Verifier<'a>, ()> {
+            ) -> Result<Verifier<'a>, ProofError> {
                 use self::internal::*;
                 use $crate::verifier::*;
 
@@ -296,13 +296,13 @@ macro_rules! define_proof {
                         $instance_var: verifier.allocate_point(
                             TRANSCRIPT_LABELS.$instance_var.as_bytes(),
                             *assignments.$instance_var,
-                        ).map_err(|_| ())?,
+                        )?,
                     )+
                     $(
                         $common_var: verifier.allocate_point(
                             TRANSCRIPT_LABELS.$common_var.as_bytes(),
                             *assignments.$common_var,
-                        ).map_err(|_| ())?,
+                        )?,
                     )+
                 };
 
@@ -316,7 +316,7 @@ macro_rules! define_proof {
                 proof: &CompactProof,
                 transcript: &mut Transcript,
                 assignments: VerifyAssignments,
-            ) -> Result<(), ()> {
+            ) -> Result<(), ProofError> {
                 let verifier = build_verifier(transcript, assignments)?;
 
                 verifier.verify_compact(proof)
@@ -327,7 +327,7 @@ macro_rules! define_proof {
                 proof: &BatchableProof,
                 transcript: &mut Transcript,
                 assignments: VerifyAssignments,
-            ) -> Result<(), ()> {
+            ) -> Result<(), ProofError> {
                 let verifier = build_verifier(transcript, assignments)?;
 
                 verifier.verify_batchable(proof)
@@ -338,13 +338,13 @@ macro_rules! define_proof {
                 proofs: &[BatchableProof],
                 transcripts: Vec<&mut Transcript>,
                 assignments: BatchVerifyAssignments,
-            ) -> Result<(), ()> {
+            ) -> Result<(), ProofError> {
                 use self::internal::*;
                 use $crate::batch_verifier::*;
 
                 let batch_size = proofs.len();
 
-                let mut verifier = BatchVerifier::new(PROOF_LABEL.as_bytes(), batch_size, transcripts).map_err(|_| ())?;
+                let mut verifier = BatchVerifier::new(PROOF_LABEL.as_bytes(), batch_size, transcripts)?;
 
                 let secret_vars = SecretVars {
                     $($secret_var: verifier.allocate_scalar(TRANSCRIPT_LABELS.$secret_var.as_bytes()),)+
@@ -355,19 +355,19 @@ macro_rules! define_proof {
                         $instance_var: verifier.allocate_instance_point(
                             TRANSCRIPT_LABELS.$instance_var.as_bytes(),
                             assignments.$instance_var,
-                        ).map_err(|_| ())?,
+                        )?,
                     )+
                     $(
                         $common_var: verifier.allocate_static_point(
                             TRANSCRIPT_LABELS.$common_var.as_bytes(),
                             assignments.$common_var,
-                        ).map_err(|_| ())?,
+                        )?,
                     )+
                 };
 
                 proof_statement(&mut verifier, secret_vars, public_vars);
 
-                verifier.verify_batchable(proofs).map_err(|_| ())
+                verifier.verify_batchable(proofs)
             }
 
             #[cfg(all(feature = "bench", test))]

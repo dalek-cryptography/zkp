@@ -85,7 +85,7 @@ impl KeyPair {
 
     fn sign(&self, message: &[u8], sig_transcript: &mut Transcript) -> Signature {
         sig_transcript.append_message(message);
-        let (proof, points) = sig_proof::prove_batchable(
+        let (proof, _points) = sig_proof::prove_batchable(
             sig_transcript,
             sig_proof::ProveAssignments {
                 x: &self.sk.0,
@@ -97,6 +97,7 @@ impl KeyPair {
         Signature(proof)
     }
 
+    #[allow(non_snake_case)]
     fn vrf(
         &self,
         mut function_transcript: Transcript,
@@ -140,10 +141,12 @@ impl Signature {
                 B: &dalek_constants::RISTRETTO_BASEPOINT_COMPRESSED,
             },
         )
+        .map_err(|_discard_error_info_in_test_code| ())
     }
 }
 
 impl VrfOutput {
+    #[allow(non_snake_case)]
     fn verify(
         &self,
         mut function_transcript: Transcript,
@@ -166,6 +169,7 @@ impl VrfOutput {
                 H: &H,
             },
         )
+        .map_err(|_discard_error_info_in_test_code| ())
     }
 }
 

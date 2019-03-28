@@ -17,14 +17,16 @@ merlin = "1"
 rand = "0.6"
 serde = "1.0"
 serde_derive = "1.0"
-
-[dev-dependencies]
-bincode = "1"
-sha2 = "0.8"
+failure = "0.1.5"
+failure_derive = "0.1.5"
 
 [dependencies.curve25519-dalek]
 features = ["serde", "nightly", "alloc"]
 version = "1"
+
+[dev-dependencies]
+bincode = "1"
+sha2 = "0.8"
 
 [features]
 default = ["u64_backend"]
