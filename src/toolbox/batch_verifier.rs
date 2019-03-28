@@ -4,11 +4,8 @@ use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::{IsIdentity, VartimeMultiscalarMul};
 
-use crate::{ProofError, Transcript};
-
-use super::constraints::*;
-use super::proofs::*;
-
+use crate::{ProofError, Transcript, BatchableProof};
+use toolbox::{TranscriptProtocol, SchnorrCS};
 use util::Matrix;
 
 pub struct BatchVerifier<'a> {

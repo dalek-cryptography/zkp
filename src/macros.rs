@@ -108,18 +108,17 @@ macro_rules! define_proof {
             use $crate::curve25519_dalek::ristretto::RistrettoPoint;
             use $crate::curve25519_dalek::ristretto::CompressedRistretto;
 
+            use $crate::toolbox::prover::Prover;
+            use $crate::toolbox::verifier::Verifier;
+
             pub use $crate::merlin::Transcript;
-
-            use $crate::prover::Prover;
-            use $crate::verifier::Verifier;
-
             pub use $crate::{CompactProof, BatchableProof, ProofError};
 
             /// The generated [`internal`] module contains lower-level
             /// functions at the level of the Schnorr constraint
             /// system API.
             pub mod internal {
-                use $crate::SchnorrCS;
+                use $crate::toolbox::SchnorrCS;
 
                 /// The proof label committed to the transcript as a domain separator.
                 pub const PROOF_LABEL: &'static str = $proof_label_string;
@@ -209,7 +208,7 @@ macro_rules! define_proof {
                 assignments: ProveAssignments,
             ) -> (Prover<'a>, CompressedPoints) {
                 use self::internal::*;
-                use $crate::prover::*;
+                use $crate::toolbox::prover::*;
 
                 let mut prover = Prover::new(PROOF_LABEL.as_bytes(), transcript);
 
@@ -283,7 +282,7 @@ macro_rules! define_proof {
                 assignments: VerifyAssignments,
             ) -> Result<Verifier<'a>, ProofError> {
                 use self::internal::*;
-                use $crate::verifier::*;
+                use $crate::toolbox::verifier::*;
 
                 let mut verifier = Verifier::new(PROOF_LABEL.as_bytes(), transcript);
 
@@ -340,7 +339,7 @@ macro_rules! define_proof {
                 assignments: BatchVerifyAssignments,
             ) -> Result<(), ProofError> {
                 use self::internal::*;
-                use $crate::batch_verifier::*;
+                use $crate::toolbox::batch_verifier::*;
 
                 let batch_size = proofs.len();
 

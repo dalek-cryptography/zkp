@@ -30,18 +30,14 @@ pub extern crate rand;
 
 pub use merlin::Transcript;
 
-mod constraints;
 mod errors;
 mod proofs;
 mod util;
 
-pub use constraints::*;
 pub use errors::*;
 pub use proofs::*;
 
-pub mod batch_verifier;
-pub mod prover;
-pub mod verifier;
+pub mod toolbox;
 
 #[macro_use]
 mod macros;
