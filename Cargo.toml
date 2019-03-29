@@ -1,6 +1,6 @@
 [package]
 name = "zkp"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["Henry de Valence <hdevalence@hdevalence.ca>"]
 license = "CC0-1.0"
 repository = "https://github.com/hdevalence/zkp"
@@ -13,24 +13,26 @@ exclude = [
 ]
 
 [dependencies]
-sha2 = "0.8"
 merlin = "1"
 rand = "0.6"
 serde = "1.0"
 serde_derive = "1.0"
-
-[dev-dependencies]
-bincode = "1"
+failure = "0.1.5"
+failure_derive = "0.1.5"
 
 [dependencies.curve25519-dalek]
 features = ["serde", "nightly", "alloc"]
 version = "1"
-default-features = false
+
+[dev-dependencies]
+bincode = "1"
+sha2 = "0.8"
 
 [features]
 default = ["u64_backend"]
 u32_backend = ["curve25519-dalek/u32_backend"]
 u64_backend = ["curve25519-dalek/u64_backend"]
-avx2_backend = ["curve25519-dalek/avx2_backend"]
+simd_backend = ["curve25519-dalek/simd_backend"]
 nightly = ["curve25519-dalek/nightly"]
 bench = [ ]
+debug-transcript = ["merlin/debug-transcript"]
