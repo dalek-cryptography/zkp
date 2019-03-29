@@ -31,6 +31,25 @@ It provides two levels of API:
   lower-level API.
   The lower-level API is contained in the `toolbox` module.
 
+# Examples
+
+Examples of how to use the API can be found in the library's `tests`
+directory.
+
+Currently, the examples include:
+
+* Specification of an "anonymous credential presentation with 10 hidden
+  attributes" proof from CMZ'13.  Depending on the backend selection, the
+  generated implementation is between 20 to 40 times faster than the benchmark
+  numbers reported in that paper.
+
+* A transcript-based signature and VRF construction with an auto-generated
+  implementation.  This includes an example of using the online interactive
+  composition [described in the Merlin blog post][merlin_blog] to provide chained
+  signatures with a counterparty.
+
+* An example of using the lower-level constraint system API.
+
 
 # Use and features
 
@@ -72,21 +91,6 @@ the macro expansion happens), they need an extra step to be enabled.
   `lib.rs` or `main.rs`, to enable Rust's nightly-only benchmark
   feature.
 
-# Examples
-
-Examples of how to use the API can be found in the library's `tests`
-directory.
-
-Currently, the examples include:
-
-* Specification of an "anonymous credential presentation with 10 hidden
-  attributes" proof from CMZ'13;
-
-* A signature and VRF construction with an auto-generated
-  implementation;
-
-* An example of using the lower-level constraint system API.
-
 # WARNING
 
 **THIS IMPLEMENTATION IS NOT YET READY FOR PRODUCTION USE**
@@ -96,3 +100,4 @@ code, for now there are no stability guarantees on the proofs, so they
 should not yet be deployed.
 
 [bellman]: https://github.com/zkcrypto/bellman
+[merlin_blog]: https://medium.com/@hdevalence/merlin-flexible-composable-transcripts-for-zero-knowledge-proofs-28d9fda22d9a
