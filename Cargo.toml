@@ -1,8 +1,9 @@
 [package]
 name = "zkp"
-version = "0.6.0"
+version = "0.6.1"
 authors = ["Henry de Valence <hdevalence@hdevalence.ca>"]
 license = "CC0-1.0"
+readme = "README.md"
 repository = "https://github.com/hdevalence/zkp"
 documentation = "https://docs.rs/zkp"
 categories = ["cryptography"]
@@ -11,6 +12,9 @@ description = "This crate has an experimental zero-knowledge proof compiler impl
 exclude = [
     ".gitignore"
 ]
+
+[package.metadata.docs.rs]
+features = ["nightly"]
 
 [dependencies]
 merlin = "1"
