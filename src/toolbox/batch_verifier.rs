@@ -8,6 +8,25 @@ use crate::{ProofError, Transcript, BatchableProof};
 use toolbox::{TranscriptProtocol, SchnorrCS};
 use util::Matrix;
 
+/// Used to produce batch verification results.
+///
+/// To use a [`BatchVerifier`], first construct one using [`BatchVerifier::new()`],
+/// declaring a batch size,
+/// supplying a domain separation label for the proof statement, as well as a 
+/// transcript for each proof to verify.
+///
+/// Allocate secret variables using [`BatchVerifier::allocate_scalar`].
+///
+/// To allocate points which have the same assignment for all proofs
+/// in the batch, use [`BatchVerifier::allocate_static_point`].  This
+/// allows the implementation to overlap coefficients among all proofs
+/// in the combined verification check.
+///
+/// To allocate points which have different asssignments for each
+/// proof instance, use [`BatchVerifier::allocate_instance_point`].
+///
+/// Finally, use [`BatchVerifier::verify_batchable`] to consume the
+/// verifier and produce a batch verification result.
 pub struct BatchVerifier<'a> {
     batch_size: usize,
     transcripts: Vec<&'a mut Transcript>,
@@ -23,16 +42,28 @@ pub struct BatchVerifier<'a> {
     constraints: Vec<(PointVar, Vec<(ScalarVar, PointVar)>)>,
 }
 
+/// A scalar variable used in batch verification.
 #[derive(Copy, Clone)]
 pub struct ScalarVar(usize);
 
+/// A point variable used in batch verification.
 #[derive(Copy, Clone)]
 pub enum PointVar {
+    /// A variable whose assignment is common to all proofs in the batch.
     Static(usize),
+    /// A variable whose assignment is unique for each proof instance.
     Instance(usize),
 }
 
 impl<'a> BatchVerifier<'a> {
+    /// Construct a new batch verifier for the statement with the
+    /// given `proof_label`.
+    ///
+    /// The `batch_size` is required as an up-front parameter to help
+    /// prevent errors with size mismatches.
+    ///
+    /// Note that this function requires one transcript borrow per
+    /// proof.
     pub fn new(
         proof_label: &'static [u8],
         batch_size: usize,
@@ -56,6 +87,7 @@ impl<'a> BatchVerifier<'a> {
         })
     }
 
+    /// Allocate a placeholder scalar variable with the given `label`.
     pub fn allocate_scalar(&mut self, label: &'static [u8]) -> ScalarVar {
         for transcript in self.transcripts.iter_mut() {
             transcript.append_scalar_var(label);
@@ -64,6 +96,7 @@ impl<'a> BatchVerifier<'a> {
         ScalarVar(self.num_scalars - 1)
     }
 
+    /// Allocate a point variable whose assignment is common to all proofs in the batch.
     pub fn allocate_static_point(
         &mut self,
         label: &'static [u8],
@@ -78,6 +111,7 @@ impl<'a> BatchVerifier<'a> {
         Ok(PointVar::Static(self.static_points.len() - 1))
     }
 
+    /// Allocate a point variable with a different assignment for each proof instance.
     pub fn allocate_instance_point(
         &mut self,
         label: &'static [u8],
@@ -99,6 +133,7 @@ impl<'a> BatchVerifier<'a> {
         Ok(PointVar::Instance(self.instance_points.len() - 1))
     }
 
+    /// Consume the verifier to produce a verification result.
     pub fn verify_batchable(mut self, proofs: &[BatchableProof]) -> Result<(), ProofError> {
         if proofs.len() != self.batch_size {
             return Err(ProofError::BatchSizeMismatch);

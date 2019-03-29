@@ -11,6 +11,14 @@
 
 #![allow(non_snake_case)]
 #![cfg_attr(feature = "bench", feature(test))]
+#![cfg_attr(feature = "nightly", feature(external_doc))]
+#![cfg_attr(feature = "nightly", doc(include = "../README.md"))]
+#![cfg_attr(feature = "nightly", deny(missing_docs))]
+#![doc(html_logo_url = "https://doc.dalek.rs/assets/dalek-logo-clear.png")]
+//! ## Note
+//!
+//! Docs will only build on nightly Rust until
+//! [RFC 1990 stabilizes](https://github.com/rust-lang/rust/issues/44732).
 
 extern crate failure;
 #[macro_use]

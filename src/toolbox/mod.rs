@@ -8,9 +8,37 @@
 //! statements, allowing proof statements with runtime parameters
 //! (e.g., an anonymous credential with a variable number of
 //! attributes).
+//!
+//! The `SchnorrCS` trait defines the common constraint system API
+//! used for specifying proof statements; it is implemented by the
+//! `Prover`, `Verifier`, and `BatchVerifier` structs.
+//!
+//! Roughly speaking, the tools fit together in the following way:
+//!
+//! * Statements are defined as generic functions which take a
+//! `SchnorrCS` implementation and some variables,
+//! and add the proof statements to the constraint system;
+//!
+//! * To create a proof, construct a `Prover`,
+//! allocate and assign variables, pass the prover and the variables
+//! to the generic statement function, then consume the prover to
+//! obtain a proof.
+//!
+//! * To verify a proof, construct a `Verifier`,
+//! allocate and assign variables, pass the verifier and the variables
+//! to the generic statement function, then consume the verifier to
+//! obtain a verification result.
+//!
+//! Note that the expansion of the [`define_proof`] macro contains a
+//! public `internal` module with the generated proof statement
+//! function, making it possible to combine generated and hand-crafted
+//! proof statements into the same constraint system.
 
+/// Implements proof creation.
 pub mod prover;
+/// Implements proof verification of compact and batchable proofs.
 pub mod verifier;
+/// Implements batch verification of batchable proofs.
 pub mod batch_verifier;
 
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
@@ -56,9 +84,12 @@ use crate::{Transcript, ProofError};
 /// constructing a constraint system and then passing it to multiple
 /// statement functions.
 pub trait SchnorrCS {
+    /// A handle for a scalar variable in the constraint system.
     type ScalarVar: Copy;
+    /// A handle for a point variable in the constraint system.
     type PointVar: Copy;
 
+    /// Add a constraint of the form `lhs = linear_combination`.
     fn constrain(
         &mut self,
         lhs: Self::PointVar,
@@ -66,6 +97,8 @@ pub trait SchnorrCS {
     );
 }
 
+/// This trait defines the wire format for how the constraint system
+/// interacts with the proof transcript.
 pub trait TranscriptProtocol {
     /// Appends `label` to the transcript as a domain separator.
     fn domain_sep(&mut self, label: &'static [u8]);

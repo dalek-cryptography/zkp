@@ -8,6 +8,21 @@ use curve25519_dalek::traits::{IsIdentity, VartimeMultiscalarMul};
 use crate::{ProofError, Transcript, CompactProof, BatchableProof};
 use toolbox::{SchnorrCS, TranscriptProtocol};
 
+/// Used to produce verification results.
+///
+/// To use a [`Verifier`], first construct one using [`Verifier::new()`],
+/// supplying a domain separation label, as well as the transcript to
+/// operate on.
+///
+/// Then, allocate secret ([`Verifier::allocate_scalar`]) variables
+/// and allocate and assign public ([`Verifier::allocate_point`])
+/// variables, and use those variables to define the proof statements.
+/// Note that no assignments to secret variables are assigned, since
+/// the verifier doesn't know the secrets.
+///
+/// Finally, use [`Verifier::verify_compact`] or
+/// [`Verifier::verify_batchable`] to consume the verifier and produce
+/// a verification result.
 pub struct Verifier<'a> {
     transcript: &'a mut Transcript,
     num_scalars: usize,
@@ -16,12 +31,20 @@ pub struct Verifier<'a> {
     constraints: Vec<(PointVar, Vec<(ScalarVar, PointVar)>)>,
 }
 
+
+/// A secret variable used during verification.
+///
+/// Note that this variable is only a placeholder; it has no
+/// assignment, because the verifier doesn't know the secrets.
 #[derive(Copy, Clone)]
 pub struct ScalarVar(usize);
+/// A public variable used during verification.
 #[derive(Copy, Clone)]
 pub struct PointVar(usize);
 
 impl<'a> Verifier<'a> {
+    /// Construct a verifier for the proof statement with the given
+    /// `proof_label`, operating on the given `transcript`.
     pub fn new(proof_label: &'static [u8], transcript: &'a mut Transcript) -> Self {
         transcript.domain_sep(proof_label);
         Verifier {
@@ -33,12 +56,15 @@ impl<'a> Verifier<'a> {
         }
     }
 
+    /// Allocate a placeholder scalar variable, without an assignment.
     pub fn allocate_scalar(&mut self, label: &'static [u8]) -> ScalarVar {
         self.transcript.append_scalar_var(label);
         self.num_scalars += 1;
         ScalarVar(self.num_scalars - 1)
     }
 
+    /// Attempt to allocate a point variable, or fail verification if
+    /// the assignment is invalid.
     pub fn allocate_point(
         &mut self,
         label: &'static [u8],
@@ -51,6 +77,7 @@ impl<'a> Verifier<'a> {
         Ok(PointVar(self.points.len() - 1))
     }
 
+    /// Consume the verifier to produce a verification of a [`CompactProof`].
     pub fn verify_compact(self, proof: &CompactProof) -> Result<(), ProofError> {
         // Check that there are as many responses as secret variables
         if proof.responses.len() != self.num_scalars {
@@ -93,6 +120,7 @@ impl<'a> Verifier<'a> {
         }
     }
 
+    /// Consume the verifier to produce a verification of a [`BatchableProof`].
     pub fn verify_batchable(self, proof: &BatchableProof) -> Result<(), ProofError> {
         // Check that there are as many responses as secret variables
         if proof.responses.len() != self.num_scalars {
