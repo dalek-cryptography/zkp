@@ -1,3 +1,14 @@
+//! Contains lower-level tools that allow programmable specification
+//! of proof statements.
+//!
+//! The higher-level [`define_proof`] macro allows declarative
+//! specification of static proof statements, and expands into code
+//! that uses this lower-level API.  This lower-level API can also be
+//! used directly to perform imperative specification of proof
+//! statements, allowing proof statements with runtime parameters
+//! (e.g., an anonymous credential with a variable number of
+//! attributes).
+
 pub mod prover;
 pub mod verifier;
 pub mod batch_verifier;
@@ -8,6 +19,42 @@ use curve25519_dalek::traits::IsIdentity;
 
 use crate::{Transcript, ProofError};
 
+/// An interface for specifying proof statements, common between
+/// provers and verifiers.
+///
+/// The variables for the constraint system are provided as associated
+/// types, allowing different implementations to have different point
+/// and scalar types.  For instance, the batch verifier has two types
+/// of point variables, one for points common to all proofs in the
+/// batch, and one for points varying per-proof.
+///
+/// This is why variable allocation is *not* included in the trait, as
+/// different roles may have different behaviour -- for instance, a
+/// prover needs to supply assignments to the scalar variables, but
+/// a verifier doesn't have access to the prover's secret scalars.
+///
+/// To specify a proof statement using this trait, write a generic
+/// function that takes a constraint system as a parameter and adds
+/// the statements.  For instance, to specify an equality of discrete
+/// logarithms, one could write
+/// ```rust,ignore
+/// fn dleq_statement<CS: SchnorrCS>(
+///     cs: &mut CS,
+///     x: CS::ScalarVar,
+///     A: CS::PointVar,
+///     G: CS::PointVar,
+///     B: CS::PointVar,
+///     H: CS::PointVar,
+/// ) {
+///     cs.constrain(A, vec![(x, B)]);
+///     cs.constrain(G, vec![(x, H)]);
+/// }
+/// ```
+///
+/// This means that multiple statements can be added to the same
+/// proof, independently of the specification of the statement, by
+/// constructing a constraint system and then passing it to multiple
+/// statement functions.
 pub trait SchnorrCS {
     type ScalarVar: Copy;
     type PointVar: Copy;
