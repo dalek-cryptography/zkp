@@ -26,7 +26,7 @@ failure_derive = "0.1.5"
 
 [dependencies.curve25519-dalek]
 features = ["serde", "nightly", "alloc"]
-version = "1"
+version = "1.0.3"
 
 [dev-dependencies]
 bincode = "1"
