@@ -1,6 +1,6 @@
 [package]
 name = "zkp"
-version = "0.6.1"
+version = "0.6.2"
 authors = ["Henry de Valence <hdevalence@hdevalence.ca>"]
 license = "CC0-1.0"
 readme = "README.md"
@@ -26,7 +26,7 @@ failure_derive = "0.1.5"
 
 [dependencies.curve25519-dalek]
 features = ["serde", "nightly", "alloc"]
-version = "1"
+version = "1.0.3"
 
 [dev-dependencies]
 bincode = "1"
