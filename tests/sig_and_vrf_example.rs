@@ -32,7 +32,13 @@ trait TranscriptProtocol {
 
 impl TranscriptProtocol for Transcript {
     fn append_message(&mut self, message: &[u8]) {
-        self.commit_bytes(b"msg", message);
+        // Merlin messages are at most 4GB.
+        // Very long messages are probably better to prehash rather than
+        // dump directly into the transcript, but for
+        // completeness, split the message into chunks:
+        for chunk in message.chunks(u32::max_value() as usize) {
+            self.commit_bytes(b"msg", chunk);
+        }
     }
     fn hash_to_group(mut self) -> RistrettoPoint {
         let mut bytes = [0u8; 64];
@@ -219,6 +225,24 @@ fn create_and_verify_sig() {
     assert!(sig2
         .verify(msg2, &pk2, &mut Transcript::new(b"Wrong"),)
         .is_err());
+}
+
+#[test]
+#[ignore]
+fn create_and_verify_bigsig() {
+    let domain_sep = b"My Sig Application";
+    let mut large_msg = Vec::new();
+    large_msg.resize((u32::max_value() as usize) + 250, 1u8);
+
+    let kp = KeyPair::from(SecretKey::new(&mut thread_rng()));
+    let pk = kp.public_key();
+
+    let sig = kp.sign(&large_msg[..], &mut Transcript::new(domain_sep));
+
+    // Check that the signature verifies (& doesn't panic inside Merlin)
+    assert!(sig
+        .verify(&large_msg[..], &pk, &mut Transcript::new(domain_sep),)
+        .is_ok());
 }
 
 #[test]
