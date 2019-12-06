@@ -1,4 +1,3 @@
-
 /// An error during proving or verification, such as a verification failure.
 #[derive(Debug, Fail)]
 pub enum ProofError {

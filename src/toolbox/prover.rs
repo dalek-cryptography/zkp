@@ -4,7 +4,7 @@ use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::MultiscalarMul;
 
-use crate::{Transcript, CompactProof, BatchableProof};
+use crate::{BatchableProof, CompactProof, Transcript};
 use toolbox::{SchnorrCS, TranscriptProtocol};
 
 /// Used to create proofs.
@@ -77,7 +77,7 @@ impl<'a> Prover<'a> {
         // Construct a TranscriptRng
         let mut rng_builder = self.transcript.build_rng();
         for scalar in &self.scalars {
-            rng_builder = rng_builder.commit_witness_bytes(b"", scalar.as_bytes());
+            rng_builder = rng_builder.rekey_with_witness_bytes(b"", scalar.as_bytes());
         }
         let mut transcript_rng = rng_builder.finalize(&mut thread_rng());
 
