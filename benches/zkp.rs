@@ -21,15 +21,6 @@ extern crate sha2;
 extern crate zkp;
 
 extern crate test;
-use test::Bencher;
-
-use self::sha2::Sha512;
-
-use curve25519_dalek::constants as dalek_constants;
-use curve25519_dalek::ristretto::RistrettoPoint;
-use curve25519_dalek::scalar::Scalar;
-
-use zkp::Transcript;
 
 mod cmz {
     // Proof statement for "credential presentation with 10 hidden attributes" from CMZ'13.

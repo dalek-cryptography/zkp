@@ -4,9 +4,9 @@ use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::{IsIdentity, VartimeMultiscalarMul};
 
+use crate::toolbox::{SchnorrCS, TranscriptProtocol};
+use crate::util::Matrix;
 use crate::{BatchableProof, ProofError, Transcript};
-use toolbox::{SchnorrCS, TranscriptProtocol};
-use util::Matrix;
 
 /// Used to produce batch verification results.
 ///

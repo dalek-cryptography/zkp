@@ -42,11 +42,11 @@ mod errors;
 mod proofs;
 mod util;
 
-pub use errors::*;
-pub use proofs::*;
+pub use crate::errors::*;
+pub use crate::proofs::*;
 
 pub mod toolbox;
 
 #[macro_use]
 mod macros;
-pub use macros::*;
+pub use crate::macros::*;

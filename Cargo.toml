@@ -2,6 +2,7 @@
 name = "zkp"
 version = "0.7.0"
 authors = ["Henry de Valence <hdevalence@hdevalence.ca>"]
+edition = "2018"
 license = "CC0-1.0"
 readme = "README.md"
 repository = "https://github.com/hdevalence/zkp"
