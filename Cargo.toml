@@ -33,3 +33,4 @@ sha2 = "0.8"
 [features]
 nightly = ["curve25519-dalek/nightly"]
 debug-transcript = ["merlin/debug-transcript"]
+bench = []
