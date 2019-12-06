@@ -5,8 +5,8 @@ use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::{IsIdentity, VartimeMultiscalarMul};
 
-use crate::{ProofError, Transcript, CompactProof, BatchableProof};
-use toolbox::{SchnorrCS, TranscriptProtocol};
+use crate::toolbox::{SchnorrCS, TranscriptProtocol};
+use crate::{BatchableProof, CompactProof, ProofError, Transcript};
 
 /// Used to produce verification results.
 ///
@@ -30,7 +30,6 @@ pub struct Verifier<'a> {
     point_labels: Vec<&'static [u8]>,
     constraints: Vec<(PointVar, Vec<(ScalarVar, PointVar)>)>,
 }
-
 
 /// A secret variable used during verification.
 ///

@@ -34,18 +34,18 @@
 //! function, making it possible to combine generated and hand-crafted
 //! proof statements into the same constraint system.
 
+/// Implements batch verification of batchable proofs.
+pub mod batch_verifier;
 /// Implements proof creation.
 pub mod prover;
 /// Implements proof verification of compact and batchable proofs.
 pub mod verifier;
-/// Implements batch verification of batchable proofs.
-pub mod batch_verifier;
 
 use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::IsIdentity;
 
-use crate::{Transcript, ProofError};
+use crate::{ProofError, Transcript};
 
 /// An interface for specifying proof statements, common between
 /// provers and verifiers.
@@ -164,12 +164,12 @@ pub trait TranscriptProtocol {
 
 impl TranscriptProtocol for Transcript {
     fn domain_sep(&mut self, label: &'static [u8]) {
-        self.commit_bytes(b"dom-sep", b"schnorrzkp/1.0/ristretto255");
-        self.commit_bytes(b"dom-sep", label);
+        self.append_message(b"dom-sep", b"schnorrzkp/1.0/ristretto255");
+        self.append_message(b"dom-sep", label);
     }
 
     fn append_scalar_var(&mut self, label: &'static [u8]) {
-        self.commit_bytes(b"scvar", label);
+        self.append_message(b"scvar", label);
     }
 
     fn append_point_var(
@@ -178,8 +178,8 @@ impl TranscriptProtocol for Transcript {
         point: &RistrettoPoint,
     ) -> CompressedRistretto {
         let encoding = point.compress();
-        self.commit_bytes(b"ptvar", label);
-        self.commit_bytes(b"val", encoding.as_bytes());
+        self.append_message(b"ptvar", label);
+        self.append_message(b"val", encoding.as_bytes());
         encoding
     }
 
@@ -191,8 +191,8 @@ impl TranscriptProtocol for Transcript {
         if point.is_identity() {
             return Err(ProofError::VerificationFailure);
         }
-        self.commit_bytes(b"ptvar", label);
-        self.commit_bytes(b"val", point.as_bytes());
+        self.append_message(b"ptvar", label);
+        self.append_message(b"val", point.as_bytes());
         Ok(())
     }
 
@@ -202,8 +202,8 @@ impl TranscriptProtocol for Transcript {
         point: &RistrettoPoint,
     ) -> CompressedRistretto {
         let encoding = point.compress();
-        self.commit_bytes(b"blindcom", label);
-        self.commit_bytes(b"val", encoding.as_bytes());
+        self.append_message(b"blindcom", label);
+        self.append_message(b"val", encoding.as_bytes());
         encoding
     }
 
@@ -215,8 +215,8 @@ impl TranscriptProtocol for Transcript {
         if point.is_identity() {
             return Err(ProofError::VerificationFailure);
         }
-        self.commit_bytes(b"blindcom", label);
-        self.commit_bytes(b"val", point.as_bytes());
+        self.append_message(b"blindcom", label);
+        self.append_message(b"val", point.as_bytes());
         Ok(())
     }
 

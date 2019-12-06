@@ -26,13 +26,13 @@ define_proof! {vrf_proof, "VRF", (x), (A, G, H), (B) : A = (x * B), G = (x * H) 
 
 /// Defines how the construction interacts with the transcript.
 trait TranscriptProtocol {
-    fn append_message(&mut self, message: &[u8]);
+    fn append_message_example(&mut self, message: &[u8]);
     fn hash_to_group(self) -> RistrettoPoint;
 }
 
 impl TranscriptProtocol for Transcript {
-    fn append_message(&mut self, message: &[u8]) {
-        self.commit_bytes(b"msg", message);
+    fn append_message_example(&mut self, message: &[u8]) {
+        self.append_message(b"msg", message);
     }
     fn hash_to_group(mut self) -> RistrettoPoint {
         let mut bytes = [0u8; 64];
@@ -84,7 +84,7 @@ impl KeyPair {
     }
 
     fn sign(&self, message: &[u8], sig_transcript: &mut Transcript) -> Signature {
-        sig_transcript.append_message(message);
+        sig_transcript.append_message_example(message);
         let (proof, _points) = sig_proof::prove_batchable(
             sig_transcript,
             sig_proof::ProveAssignments {
@@ -105,7 +105,7 @@ impl KeyPair {
         proof_transcript: &mut Transcript,
     ) -> (VrfOutput, VrfProof) {
         // Use function_transcript to hash the message to a point H
-        function_transcript.append_message(message);
+        function_transcript.append_message_example(message);
         let H = function_transcript.hash_to_group();
 
         // Compute the VRF output G and form a proof
@@ -132,7 +132,7 @@ impl Signature {
         pubkey: &PublicKey,
         sig_transcript: &mut Transcript,
     ) -> Result<(), ()> {
-        sig_transcript.append_message(message);
+        sig_transcript.append_message_example(message);
         sig_proof::verify_batchable(
             &self.0,
             sig_transcript,
@@ -156,7 +156,7 @@ impl VrfOutput {
         proof: &VrfProof,
     ) -> Result<(), ()> {
         // Use function_transcript to hash the message to a point H
-        function_transcript.append_message(message);
+        function_transcript.append_message_example(message);
         let H = function_transcript.hash_to_group().compress();
 
         vrf_proof::verify_compact(
@@ -219,6 +219,24 @@ fn create_and_verify_sig() {
     assert!(sig2
         .verify(msg2, &pk2, &mut Transcript::new(b"Wrong"),)
         .is_err());
+}
+
+#[test]
+#[ignore]
+fn create_and_verify_bigsig() {
+    let domain_sep = b"My Sig Application";
+    let mut large_msg = Vec::new();
+    large_msg.resize((u32::max_value() as usize) + 250, 1u8);
+
+    let kp = KeyPair::from(SecretKey::new(&mut thread_rng()));
+    let pk = kp.public_key();
+
+    let sig = kp.sign(&large_msg[..], &mut Transcript::new(domain_sep));
+
+    // Check that the signature verifies (& doesn't panic inside Merlin)
+    assert!(sig
+        .verify(&large_msg[..], &pk, &mut Transcript::new(domain_sep),)
+        .is_ok());
 }
 
 #[test]

@@ -30,8 +30,8 @@ use curve25519_dalek::constants as dalek_constants;
 use curve25519_dalek::ristretto::RistrettoPoint;
 use curve25519_dalek::scalar::Scalar;
 
-use zkp::Transcript;
 use zkp::toolbox::{batch_verifier::BatchVerifier, prover::Prover, verifier::Verifier, SchnorrCS};
+use zkp::Transcript;
 
 #[allow(non_snake_case)]
 fn dleq_statement<CS: SchnorrCS>(
@@ -62,8 +62,8 @@ fn create_compact_dleq(b: &mut Bencher) {
         let var_x = prover.allocate_scalar(b"x", x);
         let (var_G, _) = prover.allocate_point(b"G", G);
         let (var_H, _) = prover.allocate_point(b"H", H);
-        let (var_A, cmpr_A) = prover.allocate_point(b"A", A);
-        let (var_B, cmpr_B) = prover.allocate_point(b"B", B);
+        let (var_A, _cmpr_A) = prover.allocate_point(b"A", A);
+        let (var_B, _cmpr_B) = prover.allocate_point(b"B", B);
 
         dleq_statement(&mut prover, var_x, var_A, var_B, var_G, var_H);
 
@@ -132,8 +132,8 @@ fn create_batchable_dleq(b: &mut Bencher) {
         let var_x = prover.allocate_scalar(b"x", x);
         let (var_G, _) = prover.allocate_point(b"G", G);
         let (var_H, _) = prover.allocate_point(b"H", H);
-        let (var_A, cmpr_A) = prover.allocate_point(b"A", A);
-        let (var_B, cmpr_B) = prover.allocate_point(b"B", B);
+        let (var_A, _cmpr_A) = prover.allocate_point(b"A", A);
+        let (var_B, _cmpr_B) = prover.allocate_point(b"B", B);
 
         dleq_statement(&mut prover, var_x, var_A, var_B, var_G, var_H);
 

@@ -4,15 +4,15 @@ use curve25519_dalek::ristretto::{CompressedRistretto, RistrettoPoint};
 use curve25519_dalek::scalar::Scalar;
 use curve25519_dalek::traits::{IsIdentity, VartimeMultiscalarMul};
 
-use crate::{ProofError, Transcript, BatchableProof};
-use toolbox::{TranscriptProtocol, SchnorrCS};
-use util::Matrix;
+use crate::toolbox::{SchnorrCS, TranscriptProtocol};
+use crate::util::Matrix;
+use crate::{BatchableProof, ProofError, Transcript};
 
 /// Used to produce batch verification results.
 ///
 /// To use a [`BatchVerifier`], first construct one using [`BatchVerifier::new()`],
 /// declaring a batch size,
-/// supplying a domain separation label for the proof statement, as well as a 
+/// supplying a domain separation label for the proof statement, as well as a
 /// transcript for each proof to verify.
 ///
 /// Allocate secret variables using [`BatchVerifier::allocate_scalar`].

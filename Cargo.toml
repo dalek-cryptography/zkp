@@ -1,14 +1,15 @@
 [package]
 name = "zkp"
-version = "0.6.2"
+version = "0.7.0"
 authors = ["Henry de Valence <hdevalence@hdevalence.ca>"]
+edition = "2018"
 license = "CC0-1.0"
 readme = "README.md"
 repository = "https://github.com/hdevalence/zkp"
 documentation = "https://docs.rs/zkp"
 categories = ["cryptography"]
-keywords = ["cryptography", "curve25519", "zero-knowledge", "NIZK", "compiler"]
-description = "This crate has an experimental zero-knowledge proof compiler implemented using Rust macros"
+keywords = ["cryptography", "ristretto", "zero-knowledge", "NIZK", "compiler"]
+description = "A toolkit for auto-generated implementations of Schnorr proofs"
 exclude = [
     ".gitignore"
 ]
@@ -17,26 +18,23 @@ exclude = [
 features = ["nightly"]
 
 [dependencies]
-merlin = "1"
-rand = "0.6"
-serde = "1.0"
-serde_derive = "1.0"
-failure = "0.1.5"
-failure_derive = "0.1.5"
-
-[dependencies.curve25519-dalek]
-features = ["serde", "nightly", "alloc"]
-version = "1.0.3"
+merlin = "2"
+rand = "0.7"
+serde = "1"
+serde_derive = "1"
+thiserror = "1"
+# Disable default features to deselect a backend, then select one below
+curve25519-dalek = { version = "2", default-features = false, features = ["serde", "std"] }
 
 [dev-dependencies]
 bincode = "1"
 sha2 = "0.8"
 
 [features]
+nightly = ["curve25519-dalek/nightly"]
+debug-transcript = ["merlin/debug-transcript"]
+bench = []
 default = ["u64_backend"]
 u32_backend = ["curve25519-dalek/u32_backend"]
 u64_backend = ["curve25519-dalek/u64_backend"]
 simd_backend = ["curve25519-dalek/simd_backend"]
-nightly = ["curve25519-dalek/nightly"]
-bench = [ ]
-debug-transcript = ["merlin/debug-transcript"]
