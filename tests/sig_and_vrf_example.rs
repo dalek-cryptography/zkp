@@ -26,19 +26,13 @@ define_proof! {vrf_proof, "VRF", (x), (A, G, H), (B) : A = (x * B), G = (x * H) 
 
 /// Defines how the construction interacts with the transcript.
 trait TranscriptProtocol {
-    fn append_message(&mut self, message: &[u8]);
+    fn append_message_example(&mut self, message: &[u8]);
     fn hash_to_group(self) -> RistrettoPoint;
 }
 
 impl TranscriptProtocol for Transcript {
-    fn append_message(&mut self, message: &[u8]) {
-        // Merlin messages are at most 4GB.
-        // Very long messages are probably better to prehash rather than
-        // dump directly into the transcript, but for
-        // completeness, split the message into chunks:
-        for chunk in message.chunks(u32::max_value() as usize) {
-            self.commit_bytes(b"msg", chunk);
-        }
+    fn append_message_example(&mut self, message: &[u8]) {
+        self.append_message(b"msg", message);
     }
     fn hash_to_group(mut self) -> RistrettoPoint {
         let mut bytes = [0u8; 64];
@@ -90,7 +84,7 @@ impl KeyPair {
     }
 
     fn sign(&self, message: &[u8], sig_transcript: &mut Transcript) -> Signature {
-        sig_transcript.append_message(message);
+        sig_transcript.append_message_example(message);
         let (proof, _points) = sig_proof::prove_batchable(
             sig_transcript,
             sig_proof::ProveAssignments {
@@ -111,7 +105,7 @@ impl KeyPair {
         proof_transcript: &mut Transcript,
     ) -> (VrfOutput, VrfProof) {
         // Use function_transcript to hash the message to a point H
-        function_transcript.append_message(message);
+        function_transcript.append_message_example(message);
         let H = function_transcript.hash_to_group();
 
         // Compute the VRF output G and form a proof
@@ -138,7 +132,7 @@ impl Signature {
         pubkey: &PublicKey,
         sig_transcript: &mut Transcript,
     ) -> Result<(), ()> {
-        sig_transcript.append_message(message);
+        sig_transcript.append_message_example(message);
         sig_proof::verify_batchable(
             &self.0,
             sig_transcript,
@@ -162,7 +156,7 @@ impl VrfOutput {
         proof: &VrfProof,
     ) -> Result<(), ()> {
         // Use function_transcript to hash the message to a point H
-        function_transcript.append_message(message);
+        function_transcript.append_message_example(message);
         let H = function_transcript.hash_to_group().compress();
 
         vrf_proof::verify_compact(
