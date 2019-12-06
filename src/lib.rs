@@ -20,10 +20,6 @@
 //! Docs will only build on nightly Rust until
 //! [RFC 1990 stabilizes](https://github.com/rust-lang/rust/issues/44732).
 
-extern crate failure;
-#[macro_use]
-extern crate failure_derive;
-
 extern crate serde;
 
 #[doc(hidden)]

@@ -20,10 +20,9 @@ features = ["nightly"]
 [dependencies]
 merlin = "2"
 rand = "0.7"
-serde = "1.0"
-serde_derive = "1.0"
-failure = "0.1.5"
-failure_derive = "0.1.5"
+serde = "1"
+serde_derive = "1"
+thiserror = "1"
 curve25519-dalek = { version = "2", features = ["serde"] }
 
 [dev-dependencies]
