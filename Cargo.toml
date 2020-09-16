@@ -24,11 +24,11 @@ serde = "1"
 serde_derive = "1"
 thiserror = "1"
 # Disable default features to deselect a backend, then select one below
-curve25519-dalek = { version = "2", default-features = false, features = ["serde", "std"] }
+curve25519-dalek = { version = "3", default-features = false, features = ["serde", "std"] }
 
 [dev-dependencies]
 bincode = "1"
-sha2 = "0.8"
+sha2 = "0.9"
 
 [features]
 nightly = ["curve25519-dalek/nightly"]
