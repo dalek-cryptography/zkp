@@ -62,6 +62,21 @@ impl<'a> Verifier<'a> {
         ScalarVar(self.num_scalars - 1)
     }
 
+    /// Attempt to allocate a public point variable, or fail verification if
+    /// the assignment is invalid. This function allows for public points being the identity.
+    pub fn allocate_public_point(
+        &mut self,
+        label: &'static [u8],
+        assignment: CompressedRistretto,
+    ) -> Result<PointVar, ProofError> {
+        let encoding = assignment.decompress();
+        self.transcript
+            .append_point_var(label, &encoding.unwrap());
+        self.points.push(assignment);
+        self.point_labels.push(label);
+        Ok(PointVar(self.points.len() - 1))
+    }
+
     /// Attempt to allocate a point variable, or fail verification if
     /// the assignment is invalid.
     pub fn allocate_point(
@@ -144,7 +159,7 @@ impl<'a> Verifier<'a> {
         let commitments_offset = self.points.len();
         let combined_points = self.points.iter().chain(proof.commitments.iter());
 
-        let mut coeffs = vec![Scalar::zero(); self.points.len() + proof.commitments.len()];
+        let mut coeffs = vec![Scalar::ZERO; self.points.len() + proof.commitments.len()];
         // For each constraint of the form Q = sum(P_i, x_i),
         // we want to ensure Q_com = sum(P_i, resp_i) - c * Q,
         // so add the check rand*( sum(P_i, resp_i) - c * Q - Q_com ) == 0

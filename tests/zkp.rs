@@ -33,7 +33,7 @@ fn create_and_verify_compact() {
     let (proof, points) = {
         let H = RistrettoPoint::hash_from_bytes::<Sha512>(b"A VRF input, for instance");
         let x = Scalar::from(89327492234u64).invert();
-        let A = &x * &dalek_constants::RISTRETTO_BASEPOINT_TABLE;
+        let A = &x * dalek_constants::RISTRETTO_BASEPOINT_TABLE;
         let B = &x * &H;
 
         let mut transcript = Transcript::new(b"DLEQTest");
@@ -76,7 +76,7 @@ fn create_and_verify_batchable() {
     let (proof, points) = {
         let H = RistrettoPoint::hash_from_bytes::<Sha512>(b"A VRF input, for instance");
         let x = Scalar::from(89327492234u64).invert();
-        let A = &x * &dalek_constants::RISTRETTO_BASEPOINT_TABLE;
+        let A = &x * dalek_constants::RISTRETTO_BASEPOINT_TABLE;
         let B = &x * &H;
 
         let mut transcript = Transcript::new(b"DLEQTest");
@@ -129,7 +129,7 @@ fn create_batch_and_batch_verify() {
         for (i, message) in messages.iter().enumerate() {
             let H = RistrettoPoint::hash_from_bytes::<Sha512>(message.as_bytes());
             let x = Scalar::from(89327492234u64) * Scalar::from((i + 1) as u64);
-            let A = &x * &dalek_constants::RISTRETTO_BASEPOINT_TABLE;
+            let A = &x * dalek_constants::RISTRETTO_BASEPOINT_TABLE;
             let B = &x * &H;
 
             let mut transcript = Transcript::new(b"DLEQTest");

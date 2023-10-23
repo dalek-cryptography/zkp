@@ -170,7 +170,7 @@ impl<'a> BatchVerifier<'a> {
         let num_i = self.instance_points.len();
         let num_c = self.constraints.len();
 
-        let mut static_coeffs = vec![Scalar::zero(); num_s];
+        let mut static_coeffs = vec![Scalar::ZERO; num_s];
         let mut instance_coeffs = Matrix::<Scalar>::new(num_i + num_c, self.batch_size);
 
         for i in 0..num_c {

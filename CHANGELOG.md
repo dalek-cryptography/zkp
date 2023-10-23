@@ -2,6 +2,14 @@
 
 Entries are listed in reverse chronological order.
 
+## 0.8.0
+* update `curve25519-dalek` dependency to 4.0
+* update `merlin` dependency to 3
+* update `rand` dependency to 0.8
+* update `sha2` dependency to 0.10
+* remove backend features to be consistent with upstream dalek-cryptography
+* fix bug that occurs when public point is the identity 
+
 ## 0.7.0
 
 * Update `curve25519-dalek`, `merlin` dependencies to 2.0.
