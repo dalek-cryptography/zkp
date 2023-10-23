@@ -62,6 +62,21 @@ impl<'a> Verifier<'a> {
         ScalarVar(self.num_scalars - 1)
     }
 
+    /// Attempt to allocate a public point variable, or fail verification if
+    /// the assignment is invalid. This function allows for public points being the identity.
+    pub fn allocate_public_point(
+        &mut self,
+        label: &'static [u8],
+        assignment: CompressedRistretto,
+    ) -> Result<PointVar, ProofError> {
+        let encoding = assignment.decompress();
+        self.transcript
+            .append_point_var(label, &encoding.unwrap());
+        self.points.push(assignment);
+        self.point_labels.push(label);
+        Ok(PointVar(self.points.len() - 1))
+    }
+
     /// Attempt to allocate a point variable, or fail verification if
     /// the assignment is invalid.
     pub fn allocate_point(

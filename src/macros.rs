@@ -292,7 +292,7 @@ macro_rules! define_proof {
 
                 let public_vars = PublicVars {
                     $(
-                        $instance_var: verifier.allocate_point(
+                        $instance_var: verifier.allocate_public_point(
                             TRANSCRIPT_LABELS.$instance_var.as_bytes(),
                             *assignments.$instance_var,
                         )?,
