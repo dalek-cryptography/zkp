@@ -18,23 +18,18 @@ exclude = [
 features = ["nightly"]
 
 [dependencies]
-merlin = "2"
-rand = "0.7"
+merlin = "3"
+rand = { version = "0.8", features = ["std"] }
 serde = "1"
 serde_derive = "1"
 thiserror = "1"
 # Disable default features to deselect a backend, then select one below
-curve25519-dalek = { version = "2", default-features = false, features = ["serde", "std"] }
+curve25519-dalek = { version = "4", default-features = false, features = ["serde", "rand_core", "alloc", "digest", "precomputed-tables"] }
 
 [dev-dependencies]
 bincode = "1"
-sha2 = "0.8"
+sha2 = "0.10"
 
 [features]
-nightly = ["curve25519-dalek/nightly"]
 debug-transcript = ["merlin/debug-transcript"]
 bench = []
-default = ["u64_backend"]
-u32_backend = ["curve25519-dalek/u32_backend"]
-u64_backend = ["curve25519-dalek/u64_backend"]
-simd_backend = ["curve25519-dalek/simd_backend"]

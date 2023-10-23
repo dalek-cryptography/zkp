@@ -144,7 +144,7 @@ impl<'a> Verifier<'a> {
         let commitments_offset = self.points.len();
         let combined_points = self.points.iter().chain(proof.commitments.iter());
 
-        let mut coeffs = vec![Scalar::zero(); self.points.len() + proof.commitments.len()];
+        let mut coeffs = vec![Scalar::ZERO; self.points.len() + proof.commitments.len()];
         // For each constraint of the form Q = sum(P_i, x_i),
         // we want to ensure Q_com = sum(P_i, resp_i) - c * Q,
         // so add the check rand*( sum(P_i, resp_i) - c * Q - Q_com ) == 0

@@ -64,15 +64,6 @@ extern crate zkp;
 The `nightly` feature enables nightly-specific features.  It is required
 to build the documentation.
 
-#### Backend selection
-
-`zkp` provides the following pass-through features to select a
-`curve25519-dalek` backend:
-
-* `u32_backend`
-* `u64_backend`
-* `simd_backend`
-
 #### Transcript debugging
 
 The `debug-transcript` feature is for development and testing, and

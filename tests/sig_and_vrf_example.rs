@@ -55,7 +55,7 @@ pub struct PublicKey(RistrettoPoint, CompressedRistretto);
 
 impl<'a> From<&'a SecretKey> for PublicKey {
     fn from(sk: &'a SecretKey) -> PublicKey {
-        let pk = &sk.0 * &dalek_constants::RISTRETTO_BASEPOINT_TABLE;
+        let pk = &sk.0 * dalek_constants::RISTRETTO_BASEPOINT_TABLE;
         PublicKey(pk, pk.compress())
     }
 }
